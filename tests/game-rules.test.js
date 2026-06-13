@@ -25,6 +25,13 @@ assert(
   'free upgrade cards without gameplay behavior should be filtered from the draw pool'
 );
 
+assert(
+  /\.upgrade-overlay\{[^}]*overflow-y:auto/.test(source) &&
+  /\.upgrade-overlay\{[^}]*-webkit-overflow-scrolling:touch/.test(source) &&
+  /\.upgrade-overlay\{[^}]*touch-action:pan-y/.test(source),
+  'upgrade overlay must be vertically scrollable on mobile so the confirm button remains reachable'
+);
+
 for (const marker of [
   'runStartTime',
   'tailGrowTimer',

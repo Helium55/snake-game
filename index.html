@@ -58,10 +58,10 @@
   .submit-status.error{color:var(--danger)}
 
   /* === UPGRADE OVERLAY === */
-  .upgrade-overlay{display:none;position:absolute;inset:0;z-index:20;background:radial-gradient(ellipse at center,rgba(20,10,50,0.7) 0%,rgba(0,0,0,0.95) 100%);backdrop-filter:blur(8px);flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+  .upgrade-overlay{display:none;position:absolute;inset:0;z-index:20;background:radial-gradient(ellipse at center,rgba(20,10,50,0.7) 0%,rgba(0,0,0,0.95) 100%);backdrop-filter:blur(8px);flex-direction:column;align-items:center;justify-content:flex-start;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:18px 10px}
   .upgrade-overlay.active{display:flex}
   #upgradeParticles{position:absolute;inset:0;pointer-events:none;z-index:21}
-  .upgrade-content{position:relative;z-index:22;display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px;width:100%}
+  .upgrade-content{position:relative;z-index:22;display:flex;flex-direction:column;align-items:center;gap:18px;padding:10px 10px 24px;width:100%;min-height:min-content;margin:auto 0}
   .upgrade-title{font-size:26px;font-weight:900;letter-spacing:3px;color:#fff;text-shadow:0 0 30px rgba(167,139,250,0.8),0 0 60px rgba(189,0,255,0.4);animation:title-glow 1.5s ease-in-out infinite}
   @keyframes title-glow{0%,100%{text-shadow:0 0 30px rgba(167,139,250,0.8)}50%{text-shadow:0 0 50px rgba(189,0,255,1),0 0 80px rgba(167,139,250,0.6)}}
   .upgrade-section-label{font-size:11px;text-transform:uppercase;letter-spacing:3px;color:rgba(255,255,255,0.3)}
@@ -83,6 +83,7 @@
   .upgrade-cost.free-cost{color:var(--accent)}
   .upgrade-cost.seg-cost{color:var(--purple)}
   .upgrade-card.unaffordable{opacity:0.35;pointer-events:none}
+  #btnConfirm{position:sticky!important;bottom:10px}
 
   /* Toast */
   .toast-container{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:6px;pointer-events:none;width:90%;max-width:380px}
