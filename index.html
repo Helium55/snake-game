@@ -357,6 +357,7 @@ const FREE_UPGRADES=[
   {id:'safe_passage',icon:'🕊️',name:'安全通道',desc:'本局护盾上限+2',cost:0},
   {id:'speedy',icon:'⚡',name:'闪电之蛇',desc:'5秒内速度翻倍+无敌',cost:0},
 ];
+const DISABLED_FREE_UPGRADES=['food_sense'];
 
 // Shop upgrades (mechanic-changing, paid with body points)
 const SHOP_UPGRADES=[
@@ -380,7 +381,7 @@ const SHOP_UPGRADES=[
 // ============================================================
 // GAME STATE
 // ============================================================
-let snake,food,specialFood,direction,nextDirection,score,highScore,level,gameOver,paused,invincible;
+let snake,food,foods,specialFood,direction,nextDirection,score,highScore,level,gameOver,paused,invincible;
 let tickTimer,specialFoodTimer,phaseTimer;
 let foodEaten=0,upgradeCount=0,nextUpgradeAt=UPGRADE_EVERY;
 let inputLocked=false,scoreSubmitted=false,shieldCount=0,usedInvincibleThisRun=false;
@@ -390,6 +391,7 @@ let growExtra=0,scoreMult=1,specialChanceBonus=0,dodgeChance=0,shopPurchaseCount
 let bodyPoints=3; // body economy for shop & compression
 let mergeThreshold=4; // how many same-level segments to merge (lowered by merge_boost)
 let critChance=0,splitChance=0,goldenTouch=0,ghostTail=0;
+let runStartTime=0,tailGrowTimer=0,maxShieldBonus=0,timeWarpTimer=0,timeWarpUntil=0,safeZoneUntil=0,revengeUntil=0;
 // Automation / idle mode (triggers at level 10)
 let autoMode=false,autoSpeedDivider=4,autoCollectRange=1,autoFoodBonus=0;
 let autoFoodSpawn=1,autoSpecialRate=0;
@@ -429,6 +431,8 @@ function getSpeed(){
   let s=BASE_SPEED-level*SPEED_DEC;
   const boost=activeFree.filter(c=>c.id==='speed1').length;
   s*=(1-boost*0.15);
+  if(activeFree.some(c=>c.id==='slow_start')&&Date.now()-runStartTime<30000)s*=2;
+  if(Date.now()<timeWarpUntil)s*=1.8;
   return Math.max(MIN_SPEED,s);
 }
 
@@ -467,11 +471,13 @@ function initGame(){
   activeFree=[];activeShop=[];
   growExtra=0;scoreMult=1;specialChanceBonus=0;dodgeChance=0;shopPurchaseCount=0;
   bodyPoints=3;mergeThreshold=4;critChance=0;splitChance=0;goldenTouch=0;ghostTail=0;
+  runStartTime=Date.now();tailGrowTimer=runStartTime;maxShieldBonus=0;timeWarpTimer=runStartTime;timeWarpUntil=0;safeZoneUntil=runStartTime+5000;revengeUntil=0;
   autoMode=false;autoSpeedDivider=4;autoCollectRange=1;autoFoodBonus=0;
   autoFoodSpawn=1;autoSpecialRate=0;window._aiSmart=false;
   $('autoShopBtn').style.display='none';$('autoShopPanel').style.display='none';
   $('gameCanvas').style.background='#080812';
   specialFood=null;konamiIdx=0;phaseTimer=0;
+  foods=[];
   highScore=loadHighScore();
   spawnFood();updateUI();hideOverlays();
   const cc=$('canvasContainer');cc.classList.remove('invincible');$('invBadge').classList.remove('active');
@@ -488,19 +494,52 @@ function scheduleSpecialFood(){
 function spawnSpecialFood(){
   let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){specialFood=c;specialFood.spawnTime=Date.now()}
 }
-function spawnFood(){if(!snake||!snake.length)return;let c;do{c=randomCell()}while(isOccupied(c,false));food=c}
+function syncPrimaryFood(){food=foods&&foods.length?foods[0]:null}
+function spawnFood(){if(!snake||!snake.length)return;let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){foods.push(c);syncPrimaryFood()}}
 function isOccupied(cell,skipTail){
   if(snake.some((s,i)=>s.x===cell.x&&s.y===cell.y&&!(skipTail&&i===snake.length-1)))return true;
-  if(food&&food.x===cell.x&&food.y===cell.y)return true;
+  if(foods&&foods.some(f=>f.x===cell.x&&f.y===cell.y))return true;
   if(specialFood&&specialFood.x===cell.x&&specialFood.y===cell.y)return true;
   return false;
+}
+function nextCellFrom(cell,dir){
+  const n={...cell};
+  switch(dir){case'up':n.y--;break;case'down':n.y++;break;case'left':n.x--;break;case'right':n.x++;break}
+  if(wrapMode){n.x=(n.x+GRID)%GRID;n.y=(n.y+GRID)%GRID}
+  return n;
+}
+function isSafeAutoCell(cell,target){
+  if(!wrapMode&&(cell.x<0||cell.x>=GRID||cell.y<0||cell.y>=GRID))return false;
+  const x=(cell.x+GRID)%GRID,y=(cell.y+GRID)%GRID;
+  const willEat=target&&x===target.x&&y===target.y;
+  const len=willEat?snake.length:snake.length-1;
+  for(let i=0;i<len;i++)if(snake[i].x===x&&snake[i].y===y&&!noSelfCollide)return false;
+  return true;
+}
+function findAutoDirection(targets){
+  const start=snake[0],dirs=['up','down','left','right'];
+  const targetSet=new Set(targets.map(t=>`${t.x},${t.y}`));
+  const q=[{x:start.x,y:start.y,first:null}],seen=new Set([`${start.x},${start.y}`]);
+  while(q.length){
+    const cur=q.shift();
+    if(cur.first&&targetSet.has(`${cur.x},${cur.y}`))return cur.first;
+    for(const d of dirs){
+      if(cur.first===null&&!isValidDirection(d))continue;
+      let n=nextCellFrom(cur,d);
+      if(wrapMode){n.x=(n.x+GRID)%GRID;n.y=(n.y+GRID)%GRID}
+      const key=`${n.x},${n.y}`;
+      if(seen.has(key))continue;
+      const target=targets.find(t=>t.x===n.x&&t.y===n.y);
+      if(!isSafeAutoCell(n,target))continue;
+      seen.add(key);q.push({x:n.x,y:n.y,first:cur.first||d});
+    }
+  }
+  return dirs.find(d=>isValidDirection(d)&&isSafeAutoCell(nextCellFrom(start,d),null))||direction;
 }
 
 // ============================================================
 // UPGRADE SCREEN
 // ============================================================
-let pickedFree='',pickedShop='';
-
 let pickedFree='',pickedShop='';
 
 function showUpgradeScreen(){
@@ -521,9 +560,10 @@ function showUpgradeScreen(){
   }else if(isFirst){
     freeChoices=FIRST_UPGRADES;shopChoices=[];
   }else{
-    // Draw 3 (or 4 if lucky) free from full pool every time
+    // Draw 3 (or 4 if lucky) free from the upgrades that are relevant this run.
     const count=window._luckyNext?4:3;window._luckyNext=false;
-    const sf=[...FREE_UPGRADES].sort(()=>Math.random()-0.5).slice(0,count);
+    const availableFreeUpgrades=FREE_UPGRADES.filter(c=>(bodyCompress||c.id!=='merge_boost')&&!DISABLED_FREE_UPGRADES.includes(c.id));
+    const sf=[...availableFreeUpgrades].sort(()=>Math.random()-0.5).slice(0,count);
     freeChoices=sf;
     const ss=[...SHOP_UPGRADES].sort(()=>Math.random()-0.5).slice(0,2);
     shopChoices=ss;
@@ -554,7 +594,7 @@ function showUpgradeScreen(){
     html+=`<div class="upgrade-row">`;
     for(const c of shopChoices){
       const cost=Math.ceil(c.baseCost*shopCostScale);
-      const afford=bp>cost+1;
+      const afford=bp>=cost;
       html+=`<div class="upgrade-card shop pick-shop ${afford?'':'unaffordable'}" data-id="${c.id}" data-cost="${cost}">
         <div class="upgrade-icon">${c.icon}</div><div class="upgrade-name">${c.name}</div>
         <div class="upgrade-desc">${c.desc}</div><div class="upgrade-cost seg-cost">🟣 ${cost} 点</div>
@@ -629,23 +669,20 @@ function showUpgradeScreen(){
 }
 
 function deductBodyPoints(cost){
-  // Remove tail segments totaling 'cost' body points
   let toRemove=cost;
   while(toRemove>0&&snake.length>2){
     const tail=snake[snake.length-1];
-    const val=Math.pow(mergeThreshold,(tail.lvl||1)-1);
-    if(val<=toRemove){toRemove-=val;snake.pop()}
-    else break; // can't split a segment, just stop
+    const lvl=tail.lvl||1;
+    const val=Math.pow(mergeThreshold,lvl-1);
+    if(val<=toRemove){
+      toRemove-=val;snake.pop();
+      continue;
+    }
+    if(lvl<=1)break;
+    snake.pop();
+    for(let i=0;i<mergeThreshold;i++)snake.push({x:tail.x,y:tail.y,lvl:lvl-1});
   }
-  bodyPoints=Math.max(2,totalBodyPoints());
-}
-
-// Body compression: 4→1, recursive like 2048
-function compressBody(){
-  if(!bodyCompress||snake.length<4)return;
-  let n=snake.length;
-  while(n>=4){n=Math.floor(n/4)+(n%4)}
-  while(snake.length>Math.max(3,n))snake.pop();
+  bodyPoints=totalBodyPoints();
 }
 
 function applyUpgrade(id,isFirst){
@@ -663,6 +700,7 @@ function applyUpgrade(id,isFirst){
     if(id==='special_chance'){specialChanceBonus+=0.1;scheduleSpecialFood()}
     if(id==='crit_eat')critChance+=0.15;
     if(id==='iron_stomach')growExtra+=2;
+    if(id==='safe_passage')maxShieldBonus+=2;
     return;
   }
   const shop=SHOP_UPGRADES.find(c=>c.id===id);
@@ -675,6 +713,10 @@ function applyUpgrade(id,isFirst){
     if(id==='split_food')splitChance+=0.1;
     if(id==='golden_touch')goldenTouch+=0.1;
     if(id==='ghost_tail')ghostTail+=2;
+    if(id==='time_warp'){timeWarpTimer=Date.now();timeWarpUntil=Date.now()+3000}
+    if(id==='safe_zone')safeZoneUntil=Date.now()+8000;
+    if(id==='revenge')revengeUntil=Date.now()+3000;
+    if(id==='wall_hack')wrapMode=true;
   }
 }
 
@@ -722,45 +764,17 @@ function loopParticles(){
 function gameTick(){
   if(paused||gameOver)return;
   inputLocked=false;
+  if((!foods||!foods.length)&&food)foods=[food];
+  syncPrimaryFood();
 
   // AI auto-movement (idle mode)
   if(autoMode){
-    const h=snake[0];
-    // Pick target: prefer special food if smart AI
-    let target=specialFood;
-    if(!target||!window._aiSmart)target=food;
-    if(!target){target={x:Math.floor(GRID/2),y:Math.floor(GRID/2)}}
-    // Greedy path: prefer axis with bigger gap
-    const dx=target.x-h.x,dy=target.y-h.y;
-    const dirs=[];
-    if(Math.abs(dx)>=Math.abs(dy)){
-      dirs.push(dx>0?'right':'left',dy>0?'down':'up');
-    }else{
-      dirs.push(dy>0?'down':'up',dx>0?'right':'left');
-    }
-    // Add all possible directions
-    if(!dirs.includes('right'))dirs.push('right');
-    if(!dirs.includes('left'))dirs.push('left');
-    if(!dirs.includes('down'))dirs.push('down');
-    if(!dirs.includes('up'))dirs.push('up');
-    // Try each direction, pick first safe one
-    for(const d of dirs){
-      if(!isValidDirection(d))continue;
-      const test={...h};
-      switch(d){case'up':test.y--;break;case'down':test.y++;break;case'left':test.x--;break;case'right':test.x++}
-      // Check would this kill us?
-      const w=test.x<0||test.x>=GRID||test.y<0||test.y>=GRID;
-      if(w&&!wrapMode)continue;
-      const willEat=target&&test.x===target.x&&test.y===target.y;
-      let hitBody=false;
-      const clen=willEat?snake.length:snake.length-1;
-      for(let i=0;i<clen;i++){if(snake[i].x===test.x&&snake[i].y===test.y){hitBody=true;break}}
-      if(hitBody&&!noSelfCollide)continue;
-      direction=d;break;
-    }
+    const targets=[...(foods||[])];
+    if(window._aiSmart&&specialFood)targets.unshift(specialFood);
+    if(targets.length)direction=findAutoDirection(targets);
   }
 
-  if(isValidDirection(nextDirection))direction=nextDirection;
+  if(!autoMode&&isValidDirection(nextDirection))direction=nextDirection;
 
   const head={...snake[0]};
   switch(direction){case'up':head.y--;break;case'down':head.y++;break;case'left':head.x--;break;case'right':head.x++;break}
@@ -774,15 +788,30 @@ function gameTick(){
     if(phaseTimer>=8000){phaseTimer=0;/* activate next tick through invincible-like behavior */ }
   }
   const isPhasing=activeShop.some(c=>c.id==='phase')&&phaseTimer<1000; // 1s phase window
+  const inSafeZone=Date.now()<safeZoneUntil&&Math.abs(head.x-Math.floor(GRID/2))<=3&&Math.abs(head.y-Math.floor(GRID/2))<=3;
 
   if(hitWall){
-    if(invincible||isPhasing||wrapMode){head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
+    if(invincible||isPhasing||wrapMode||inSafeZone){head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
     else if(shieldCount>0){shieldCount--;head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
     else if(Math.random()<dodgeChance){head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
     else{endGame();return}
+    revengeUntil=Date.now()+3000;
   }
 
-  const willEatRegular=food&&head.x===food.x&&head.y===food.y;
+  // Auto-collect: in auto mode, eat food within range
+  if(autoMode&&autoCollectRange>1){
+    const h=head;
+    if(foods){
+      const near=foods.find(f=>Math.abs(f.x-h.x)+Math.abs(f.y-h.y)<=autoCollectRange&&!(f.x===h.x&&f.y===h.y));
+      if(near){near.x=h.x;near.y=h.y;syncPrimaryFood()}
+    }
+    if(specialFood&&Math.abs(specialFood.x-h.x)+Math.abs(specialFood.y-h.y)<=autoCollectRange&&!(specialFood.x===h.x&&specialFood.y===h.y)){
+      specialFood.x=h.x;specialFood.y=h.y;
+    }
+  }
+
+  const eatenFoodIndex=foods?foods.findIndex(f=>head.x===f.x&&head.y===f.y):-1;
+  const willEatRegular=eatenFoodIndex>=0;
   const willEatSpecial=specialFood&&head.x===specialFood.x&&head.y===specialFood.y;
   const growing=willEatRegular||willEatSpecial;
 
@@ -793,7 +822,7 @@ function gameTick(){
     let hitSelf=false;
     for(let i=0;i<checkLen;i++){if(snake[i].x===head.x&&snake[i].y===head.y){hitSelf=true;break}}
     if(hitSelf){
-      if(invincible||isPhasing){}else if(shieldCount>0){shieldCount--}else if(Math.random()<dodgeChance){}else{endGame();return}
+      if(invincible||isPhasing||inSafeZone){}else if(shieldCount>0){shieldCount--;revengeUntil=Date.now()+3000}else if(Math.random()<dodgeChance){revengeUntil=Date.now()+3000}else{endGame();return}
     }
   }
 
@@ -802,38 +831,37 @@ function gameTick(){
   // Periodic shield
   if(activeShop.some(c=>c.id==='periodic_shield')){
     if(!window._lastPeriodicShield)window._lastPeriodicShield=Date.now();
-    if(Date.now()-window._lastPeriodicShield>15000){shieldCount++;window._lastPeriodicShield=Date.now()}
+    if(Date.now()-window._lastPeriodicShield>15000){shieldCount=Math.min(shieldCount+1,1+maxShieldBonus);window._lastPeriodicShield=Date.now()}
   }
 
-  // Auto-collect: in auto mode, eat food within range
-  if(autoMode&&autoCollectRange>1){
-    const h=snake[0];
-    if(food&&Math.abs(food.x-h.x)+Math.abs(food.y-h.y)<=autoCollectRange&&!(food.x===h.x&&food.y===h.y)){
-      // Teleport food to head (simulate auto-collect)
-      food.x=h.x;food.y=h.y;
-    }
-    if(specialFood&&Math.abs(specialFood.x-h.x)+Math.abs(specialFood.y-h.y)<=autoCollectRange&&!(specialFood.x===h.x&&specialFood.y===h.y)){
-      specialFood.x=h.x;specialFood.y=h.y;
-    }
+  if(activeFree.some(c=>c.id==='tail_grow')&&Date.now()-tailGrowTimer>=5000){
+    const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1});tailGrowTimer=Date.now();
+  }
+
+  if(activeShop.some(c=>c.id==='time_warp')&&Date.now()-timeWarpTimer>=30000){
+    timeWarpUntil=Date.now()+3000;timeWarpTimer=Date.now();
   }
 
   if(willEatRegular){
     let pts=1*scoreMult;
+    if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
     score+=pts;foodEaten++;
     const extraGrow=1+growExtra;
     for(let i=0;i<extraGrow-1;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
     // Auto food bonus: extra body points
     if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
+    foods.splice(eatenFoodIndex,1);syncPrimaryFood();
     sfxEat();spawnFood();
     if(Math.random()<goldenTouch&&!specialFood)spawnSpecialFood();
     if(Math.random()<splitChance)spawnFood();
     if(autoMode)for(let i=0;i<autoFoodSpawn-1;i++)spawnFood();
     if(autoMode&&Math.random()<autoSpecialRate&&!specialFood)spawnSpecialFood();
-    if(specialFood&&food.x===specialFood.x&&food.y===specialFood.y)specialFood=null;
+    if(specialFood&&foods.some(f=>f.x===specialFood.x&&f.y===specialFood.y))specialFood=null;
   }else if(willEatSpecial){
     const bonus=activeShop.some(c=>c.id==='double_special')?4:2;
     let pts=bonus*scoreMult;
+    if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
     score+=pts;foodEaten++;achStats.totalSpecial++;
     const extraGrow=bonus+growExtra;
@@ -856,12 +884,13 @@ function gameTick(){
         if(nx>=0&&nx<GRID&&ny>=0&&ny<GRID&&!onSnake(nx,ny)){obj.x=nx;obj.y=ny}
       }
     };
-    pull(food);pull(specialFood);
+    if(foods){for(const f of foods)pull(f);syncPrimaryFood()}
+    pull(specialFood);
   }
 
   // Food radar highlight
   if(activeShop.some(c=>c.id==='food_radar')){
-    if(food)drawCellGlow(food.x,food.y,'rgba(0,255,136,0.15)',20);
+    if(foods)for(const f of foods)drawCellGlow(f.x,f.y,'rgba(0,255,136,0.15)',20);
     if(specialFood)drawCellGlow(specialFood.x,specialFood.y,'rgba(255,215,64,0.15)',20);
   }
 
@@ -953,7 +982,7 @@ function draw(){
   const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,CW,CH);
   ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
   for(let i=0;i<=GRID;i++){const p=i*CELL;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,CH);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(CW,p);ctx.stroke()}
-  if(food)drawCell(food.x,food.y,'#ff4060','rgba(255,64,96,0.7)',0.9);
+  if(foods)for(const f of foods)drawCell(f.x,f.y,'#ff4060','rgba(255,64,96,0.7)',0.9);
   if(specialFood){const age=Date.now()-specialFood.spawnTime,pulse=0.7+0.3*Math.sin(age*0.01),alpha=age>6000?Math.max(0,1-(age-6000)/2000):1;drawCell(specialFood.x,specialFood.y,'#ffd740',`rgba(255,215,64,${pulse*alpha})`,pulse)}
 
   const len=snake.length;
@@ -1111,7 +1140,7 @@ function renderAutoShop(){
     for(const it of AUTO_SHOP.filter(i=>i.cat===cat)){
       const owned=(autoShopPurchases[it.id]||0);
       const cost=Math.ceil(it.baseCost*(1+owned*0.3));
-      const afford=bp>cost+1;
+      const afford=bp>=cost;
       html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin:3px 0;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)">
         <div style="flex:1;min-width:0"><span style="font-size:13px">${it.icon} ${it.name}</span><span style="font-size:10px;color:rgba(255,255,255,0.35);margin-left:6px">${it.desc}</span></div>
         <button class="auto-buy-btn" data-id="${it.id}" data-cost="${cost}" style="margin-left:8px;padding:4px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid ${afford?'rgba(189,0,255,0.4)':'rgba(255,255,255,0.1)'};background:${afford?'rgba(189,0,255,0.1)':'rgba(255,255,255,0.03)'};color:${afford?'#bd00ff':'rgba(255,255,255,0.2)'};cursor:${afford?'pointer':'default'};white-space:nowrap" ${afford?'':'disabled'}>💰${cost}</button>
@@ -1123,7 +1152,7 @@ function renderAutoShop(){
     btn.addEventListener('click',()=>{
       const id=btn.dataset.id,cost=parseInt(btn.dataset.cost);
       const bp=totalBodyPoints();
-      if(bp<=cost+1)return;
+      if(bp<cost)return;
       deductBodyPoints(cost);
       autoShopPurchases[id]=(autoShopPurchases[id]||0)+1;
       saveAutoShop();
