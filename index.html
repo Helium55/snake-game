@@ -684,6 +684,21 @@ function deductBodyPoints(cost){
   }
   bodyPoints=totalBodyPoints();
 }
+function trimTailPoints(points){
+  let toRemove=points;
+  while(toRemove>0&&snake.length>1){
+    const tail=snake[snake.length-1];
+    const lvl=tail.lvl||1;
+    const val=Math.pow(mergeThreshold,lvl-1);
+    if(val<=toRemove){
+      toRemove-=val;snake.pop();
+      continue;
+    }
+    if(lvl<=1)break;
+    snake.pop();
+    for(let i=0;i<mergeThreshold;i++)snake.push({x:tail.x,y:tail.y,lvl:lvl-1});
+  }
+}
 
 function applyUpgrade(id,isFirst){
   if(isFirst){
@@ -868,7 +883,7 @@ function gameTick(){
     for(let i=0;i<extraGrow;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
     if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
     sfxSpecial();specialFood=null;
-  }else{snake.pop()}
+  }else{trimTailPoints(1)}
 
   if(specialFood&&Date.now()-specialFood.spawnTime>8000)specialFood=null;
 

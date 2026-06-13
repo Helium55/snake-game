@@ -158,6 +158,25 @@ __testResult = { bodyPoints: totalBodyPoints(), levels: snake.map(s => s.lvl || 
 assert.equal(compressedPayment.bodyPoints, 3, 'deducting 3 points from a 6-point body should leave 3 points');
 assert.equal(JSON.stringify(compressedPayment.levels), JSON.stringify([1, 1, 1]), 'payment should split a higher tail segment and consume exact value');
 
+const compressedMove = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:2}];
+direction = 'right';
+nextDirection = 'right';
+bodyCompress = true;
+food = {x:12,y:12};
+foods = [food];
+specialFood = null;
+paused = false;
+gameOver = false;
+const before = totalBodyPoints();
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { before, after: totalBodyPoints(), levels: snake.map(s => s.lvl || 1), gameOver };
+`);
+
+assert.equal(compressedMove.gameOver, false);
+assert.equal(compressedMove.after, compressedMove.before, 'moving without eating must not destroy compressed body points');
+
 const autoCollect = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
 direction = 'right';
@@ -176,6 +195,27 @@ __testResult = { score, foodEaten };
 
 assert.equal(autoCollect.score, 1, 'auto collect should eat regular food in range on the same tick');
 assert.equal(autoCollect.foodEaten, 1);
+
+const autoBodyGrowth = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+direction = 'right';
+nextDirection = 'right';
+autoMode = true;
+food = {x:6,y:5};
+foods = [food];
+specialFood = null;
+paused = false;
+gameOver = false;
+const before = totalBodyPoints();
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { before, after: totalBodyPoints(), length: snake.length, score, foodEaten };
+`);
+
+assert.equal(autoBodyGrowth.score, 1);
+assert.equal(autoBodyGrowth.foodEaten, 1);
+assert.equal(autoBodyGrowth.after, autoBodyGrowth.before + 1, 'eating regular food in auto mode should increase body points');
+assert.equal(autoBodyGrowth.length, 4, 'regular food should grow the snake by one segment');
 
 const multiFood = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
