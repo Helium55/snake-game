@@ -390,6 +390,8 @@ let activeFree=[],activeShop=[];
 let growExtra=0,scoreMult=1,specialChanceBonus=0,dodgeChance=0,shopPurchaseCount=0;
 let bodyPoints=3; // body economy for shop & compression
 let mergeThreshold=4; // how many same-level segments to merge (lowered by merge_boost)
+const BODY_LEVEL_CAP=16;
+const FOOD_MERGE_COUNT=4;
 let critChance=0,splitChance=0,goldenTouch=0,ghostTail=0;
 let runStartTime=0,tailGrowTimer=0,maxShieldBonus=0,timeWarpTimer=0,timeWarpUntil=0,safeZoneUntil=0,revengeUntil=0;
 // Automation / idle mode (triggers at level 10)
@@ -437,12 +439,18 @@ function getSpeed(){
 }
 
 function totalBodyPoints(){
-  let p=0;for(const s of snake)p+=Math.pow(mergeThreshold,(s.lvl||1)-1);return p;
+  let p=0;for(const s of snake)p+=segmentValue(s.lvl);return p;
+}
+function segmentValue(lvl){
+  return Math.pow(mergeThreshold,(lvl||1)-1);
+}
+function foodValue(f){
+  return Math.pow(FOOD_MERGE_COUNT,(f?.lvl||1)-1);
 }
 function bodyLevelsFromPoints(points){
   const levels=[];
-  for(let lvl=8;lvl>=1;lvl--){
-    const val=Math.pow(mergeThreshold,lvl-1);
+  for(let lvl=BODY_LEVEL_CAP;lvl>=1;lvl--){
+    const val=segmentValue(lvl);
     while(points>=val){levels.push(lvl);points-=val}
   }
   return levels.length?levels:[1];
@@ -494,7 +502,53 @@ function spawnSpecialFood(){
   let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){specialFood=c;specialFood.spawnTime=Date.now()}
 }
 function syncPrimaryFood(){food=foods&&foods.length?foods[0]:null}
-function spawnFood(){if(!snake||!snake.length)return;let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){foods.push(c);syncPrimaryFood()}}
+function spawnFood(){if(!snake||!snake.length)return;let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){foods.push({...c,lvl:1});mergeFoods();syncPrimaryFood()}}
+function mergeFoods(){
+  if(!foods||foods.length<FOOD_MERGE_COUNT)return;
+  let merged=true;
+  while(merged){
+    merged=false;
+    const byLevel=new Map();
+    for(let i=0;i<foods.length;i++){
+      const lvl=Math.min(foods[i].lvl||1,BODY_LEVEL_CAP);
+      if(!byLevel.has(lvl))byLevel.set(lvl,[]);
+      byLevel.get(lvl).push(i);
+    }
+    for(const [lvl,indices] of byLevel){
+      if(lvl>=BODY_LEVEL_CAP||indices.length<FOOD_MERGE_COUNT)continue;
+      const indexSet=new Set(indices);
+      const seen=new Set();
+      for(const start of indices){
+        if(seen.has(start))continue;
+        const queue=[start],group=[];
+        seen.add(start);
+        while(queue.length){
+          const idx=queue.shift();
+          group.push(idx);
+          const cur=foods[idx];
+          for(const next of indices){
+            if(seen.has(next)||!indexSet.has(next))continue;
+            const other=foods[next];
+            if(Math.abs(cur.x-other.x)+Math.abs(cur.y-other.y)===1){
+              seen.add(next);queue.push(next);
+            }
+          }
+        }
+        if(group.length>=FOOD_MERGE_COUNT){
+          const mergeGroup=group.slice(0,FOOD_MERGE_COUNT);
+          const base=foods[mergeGroup[0]];
+          const remove=new Set(mergeGroup);
+          foods=foods.filter((_,idx)=>!remove.has(idx));
+          foods.push({x:base.x,y:base.y,lvl:lvl+1});
+          merged=true;
+          break;
+        }
+      }
+      if(merged)break;
+    }
+  }
+  syncPrimaryFood();
+}
 function isOccupied(cell,skipTail){
   if(snake.some((s,i)=>s.x===cell.x&&s.y===cell.y&&!(skipTail&&i===snake.length-1)))return true;
   if(foods&&foods.some(f=>f.x===cell.x&&f.y===cell.y))return true;
@@ -561,7 +615,11 @@ function showUpgradeScreen(){
   }else{
     // Draw 3 (or 4 if lucky) free from the upgrades that are relevant this run.
     const count=window._luckyNext?4:3;window._luckyNext=false;
-    const availableFreeUpgrades=FREE_UPGRADES.filter(c=>(bodyCompress||c.id!=='merge_boost')&&!DISABLED_FREE_UPGRADES.includes(c.id));
+    const availableFreeUpgrades=FREE_UPGRADES.filter(c=>
+      (bodyCompress||c.id!=='merge_boost')&&
+      !(c.id==='merge_boost'&&activeFree.some(a=>a.id==='merge_boost'))&&
+      !DISABLED_FREE_UPGRADES.includes(c.id)
+    );
     const sf=[...availableFreeUpgrades].sort(()=>Math.random()-0.5).slice(0,count);
     freeChoices=sf;
     const ss=[...SHOP_UPGRADES].sort(()=>Math.random()-0.5).slice(0,2);
@@ -650,7 +708,11 @@ function showUpgradeScreen(){
     if(pickedShop)applyUpgrade(pickedShop,false);
     if(pickedFree==='bonus_food')foodEaten+=3;
     if(pickedFree==='body_surge'){for(let i=0;i<5;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
-    if(pickedFree==='merge_boost')mergeThreshold=Math.max(2,mergeThreshold-1);
+    if(pickedFree==='merge_boost'){
+      const currentBodyPoints=totalBodyPoints();
+      mergeThreshold=Math.max(2,mergeThreshold-1);
+      rebuildBodyFromLevels(bodyLevelsFromPoints(currentBodyPoints));
+    }
     if(pickedFree==='lucky'){window._luckyNext=true}
     if(pickedFree==='speedy'){invincible=true;setTimeout(()=>{invincible=false},5000)}
     if(pickedFree==='gold_rush'){specialChanceBonus+=0.3;scheduleSpecialFood()}
@@ -672,7 +734,7 @@ function deductBodyPoints(cost){
   while(toRemove>0&&snake.length>2){
     const tail=snake[snake.length-1];
     const lvl=tail.lvl||1;
-    const val=Math.pow(mergeThreshold,lvl-1);
+    const val=segmentValue(lvl);
     if(val<=toRemove){
       toRemove-=val;snake.pop();
       continue;
@@ -688,7 +750,7 @@ function trimTailPoints(points){
   while(toRemove>0&&snake.length>1){
     const tail=snake[snake.length-1];
     const lvl=tail.lvl||1;
-    const val=Math.pow(mergeThreshold,lvl-1);
+    const val=segmentValue(lvl);
     if(val<=toRemove){
       toRemove-=val;snake.pop();
       continue;
@@ -857,11 +919,13 @@ function gameTick(){
   }
 
   if(willEatRegular){
-    let pts=1*scoreMult;
+    const eatenFood=foods[eatenFoodIndex];
+    const value=foodValue(eatenFood);
+    let pts=value*scoreMult;
     if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
-    score+=pts;foodEaten++;
-    const extraGrow=1+growExtra;
+    score+=pts;foodEaten+=value;
+    const extraGrow=value+growExtra;
     for(let i=0;i<extraGrow-1;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
     // Auto food bonus: extra body points
     if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
@@ -872,6 +936,7 @@ function gameTick(){
     if(autoMode)for(let i=0;i<autoFoodSpawn-1;i++)spawnFood();
     if(autoMode&&Math.random()<autoSpecialRate&&!specialFood)spawnSpecialFood();
     if(specialFood&&foods.some(f=>f.x===specialFood.x&&f.y===specialFood.y))specialFood=null;
+    mergeFoods();
   }else if(willEatSpecial){
     const bonus=activeShop.some(c=>c.id==='double_special')?4:2;
     let pts=bonus*scoreMult;
@@ -898,7 +963,7 @@ function gameTick(){
         if(nx>=0&&nx<GRID&&ny>=0&&ny<GRID&&!onSnake(nx,ny)){obj.x=nx;obj.y=ny}
       }
     };
-    if(foods){for(const f of foods)pull(f);syncPrimaryFood()}
+    if(foods){for(const f of foods)pull(f);mergeFoods();syncPrimaryFood()}
     pull(specialFood);
   }
 
@@ -996,7 +1061,17 @@ function draw(){
   const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,CW,CH);
   ctx.strokeStyle='rgba(255,255,255,0.02)';ctx.lineWidth=0.5;
   for(let i=0;i<=GRID;i++){const p=i*CELL;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,CH);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(CW,p);ctx.stroke()}
-  if(foods)for(const f of foods)drawCell(f.x,f.y,'#ff4060','rgba(255,64,96,0.7)',0.9);
+  if(foods)for(const f of foods){
+    drawCell(f.x,f.y,'#ff4060','rgba(255,64,96,0.7)',0.9);
+    const lvl=f.lvl||1;
+    if(lvl>1){
+      const cx=f.x*CELL+CELL/2,cy=f.y*CELL+CELL/2;
+      ctx.fillStyle='#fff';ctx.font='bold 9px "Segoe UI"';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.shadowColor='rgba(0,0,0,0.8)';ctx.shadowBlur=3;
+      ctx.fillText(lvl,cx,cy);
+      ctx.shadowColor='transparent';ctx.shadowBlur=0;
+    }
+  }
   if(specialFood){const age=Date.now()-specialFood.spawnTime,pulse=0.7+0.3*Math.sin(age*0.01),alpha=age>6000?Math.max(0,1-(age-6000)/2000):1;drawCell(specialFood.x,specialFood.y,'#ffd740',`rgba(255,215,64,${pulse*alpha})`,pulse)}
 
   const len=snake.length;

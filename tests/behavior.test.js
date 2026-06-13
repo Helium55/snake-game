@@ -283,4 +283,49 @@ assert.equal(multiFood.score, 1);
 assert.equal(multiFood.foodEaten, 1);
 assert.equal(multiFood.foods.length, 2, 'split food should leave two regular foods on the board');
 
+const foodMerge = runScenario(`
+snake = [{x:10,y:10,lvl:1},{x:9,y:10,lvl:1},{x:8,y:10,lvl:1}];
+foods = [
+  {x:1,y:1,lvl:1},
+  {x:2,y:1,lvl:1},
+  {x:1,y:2,lvl:1},
+  {x:2,y:2,lvl:1}
+];
+mergeFoods();
+__testResult = { foods: foods.map(f => ({x:f.x,y:f.y,lvl:f.lvl || 1})) };
+`);
+
+assert.equal(foodMerge.foods.length, 1, 'four adjacent same-level foods should merge into one food');
+assert.equal(foodMerge.foods[0].lvl, 2, 'merged food should become level 2');
+
+const highLevelFoodValue = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+food = {x:6,y:5,lvl:2};
+foods = [food];
+specialFood = null;
+direction = 'right';
+nextDirection = 'right';
+paused = false;
+gameOver = false;
+const before = totalBodyPoints();
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { before, after: totalBodyPoints(), score, foodEaten };
+`);
+
+assert.equal(highLevelFoodValue.after, highLevelFoodValue.before + 4, 'level-2 food should add 4 body points');
+assert.equal(highLevelFoodValue.score, 4, 'level-2 food should score like 4 regular foods');
+assert.equal(highLevelFoodValue.foodEaten, 4, 'level-2 food should count as 4 food value');
+
+const bodyLevelCap = runScenario(`
+snake = [{x:5,y:5,lvl:1}];
+mergeThreshold = 4;
+__testResult = {
+  levels: bodyLevelsFromPoints(Math.pow(4,15)),
+  value: Math.pow(4,15)
+};
+`);
+
+assert.equal(JSON.stringify(bodyLevelCap.levels), JSON.stringify([16]), 'body compression should support level 16');
+
 console.log('behavior checks passed');
