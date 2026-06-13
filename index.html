@@ -512,17 +512,17 @@ let achStats = {totalFoodEaten:0,totalSpecialEaten:0,maxStage:0,firstBossEncount
 //  PERMANENT UPGRADES (Shop)
 // ============================================================
 const SHOP_ITEMS = [
-  {id:'spd1', name:'基础速度+5%', desc:'初始移动速度永久提升', cost:40, type:'stat', apply(){}},
-  {id:'spd2', name:'基础速度+10%', desc:'需要先购买+5%', cost:100, type:'stat', req:'spd1', apply(){}},
-  {id:'len1', name:'起始蛇长+1', desc:'每局开始时蛇多一节', cost:80, type:'stat', apply(){}},
-  {id:'len2', name:'起始蛇长+2', desc:'需要先购买+1', cost:200, type:'stat', req:'len1', apply(){}},
-  {id:'shield1', name:'护盾+1', desc:'每局额外获得一次免死护盾', cost:200, type:'stat', apply(){}},
-  {id:'skin_fire', name:'🔥 火焰蛇身', desc:'蛇身变为火焰渐变色', cost:60, type:'skin', apply(){}},
-  {id:'skin_ice', name:'❄️ 冰霜蛇身', desc:'蛇身变为冰霜渐变色', cost:60, type:'skin', apply(){}},
-  {id:'skin_galaxy', name:'🌌 银河蛇身', desc:'蛇身变为星空渐变色', cost:100, type:'skin', apply(){}},
-  {id:'card_greed', name:'解锁卡牌：贪婪', desc:'普通食物额外+2分 加入卡池', cost:120, type:'card', apply(){}},
-  {id:'card_regen', name:'解锁卡牌：再生', desc:'每过一关蛇身+2 加入卡池', cost:120, type:'card', apply(){}},
-  {id:'card_mirror', name:'解锁卡牌：镜像', desc:'特殊食物出现概率翻倍 加入卡池', cost:160, type:'card', apply(){}},
+  {id:'spd1', name:'基础速度+5%', desc:'初始移动速度永久提升', cost:20, type:'stat', apply(){}},
+  {id:'spd2', name:'基础速度+10%', desc:'需要先购买+5%', cost:50, type:'stat', req:'spd1', apply(){}},
+  {id:'len1', name:'起始蛇长+1', desc:'每局开始时蛇多一节', cost:40, type:'stat', apply(){}},
+  {id:'len2', name:'起始蛇长+2', desc:'需要先购买+1', cost:100, type:'stat', req:'len1', apply(){}},
+  {id:'shield1', name:'护盾+1', desc:'每局额外获得一次免死护盾', cost:100, type:'stat', apply(){}},
+  {id:'skin_fire', name:'🔥 火焰蛇身', desc:'蛇身变为火焰渐变色', cost:30, type:'skin', apply(){}},
+  {id:'skin_ice', name:'❄️ 冰霜蛇身', desc:'蛇身变为冰霜渐变色', cost:30, type:'skin', apply(){}},
+  {id:'skin_galaxy', name:'🌌 银河蛇身', desc:'蛇身变为星空渐变色', cost:50, type:'skin', apply(){}},
+  {id:'card_greed', name:'解锁卡牌：贪婪', desc:'普通食物额外+2分 加入卡池', cost:60, type:'card', apply(){}},
+  {id:'card_regen', name:'解锁卡牌：再生', desc:'每过一关蛇身+2 加入卡池', cost:60, type:'card', apply(){}},
+  {id:'card_mirror', name:'解锁卡牌：镜像', desc:'特殊食物出现概率翻倍 加入卡池', cost:80, type:'card', apply(){}},
 ];
 
 function loadMetaCoins(){try{return parseInt(localStorage.getItem('snake_meta')||'0')}catch(e){return 0}}
