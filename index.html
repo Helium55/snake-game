@@ -512,17 +512,17 @@ let achStats = {totalFoodEaten:0,totalSpecialEaten:0,maxStage:0,firstBossEncount
 //  PERMANENT UPGRADES (Shop)
 // ============================================================
 const SHOP_ITEMS = [
-  {id:'spd1', name:'基础速度+5%', desc:'初始移动速度永久提升', cost:100, type:'stat', apply(){}},
-  {id:'spd2', name:'基础速度+10%', desc:'需要先购买+5%', cost:250, type:'stat', req:'spd1', apply(){}},
-  {id:'len1', name:'起始蛇长+1', desc:'每局开始时蛇多一节', cost:200, type:'stat', apply(){}},
-  {id:'len2', name:'起始蛇长+2', desc:'需要先购买+1', cost:500, type:'stat', req:'len1', apply(){}},
-  {id:'shield1', name:'护盾+1', desc:'每局额外获得一次免死护盾', cost:500, type:'stat', apply(){}},
-  {id:'skin_fire', name:'🔥 火焰蛇身', desc:'蛇身变为火焰渐变色', cost:150, type:'skin', apply(){}},
-  {id:'skin_ice', name:'❄️ 冰霜蛇身', desc:'蛇身变为冰霜渐变色', cost:150, type:'skin', apply(){}},
-  {id:'skin_galaxy', name:'🌌 银河蛇身', desc:'蛇身变为星空渐变色', cost:250, type:'skin', apply(){}},
-  {id:'card_greed', name:'解锁卡牌：贪婪', desc:'普通食物额外+2分 加入卡池', cost:300, type:'card', apply(){}},
-  {id:'card_regen', name:'解锁卡牌：再生', desc:'每过一关蛇身+2 加入卡池', cost:300, type:'card', apply(){}},
-  {id:'card_mirror', name:'解锁卡牌：镜像', desc:'特殊食物出现概率翻倍 加入卡池', cost:400, type:'card', apply(){}},
+  {id:'spd1', name:'基础速度+5%', desc:'初始移动速度永久提升', cost:40, type:'stat', apply(){}},
+  {id:'spd2', name:'基础速度+10%', desc:'需要先购买+5%', cost:100, type:'stat', req:'spd1', apply(){}},
+  {id:'len1', name:'起始蛇长+1', desc:'每局开始时蛇多一节', cost:80, type:'stat', apply(){}},
+  {id:'len2', name:'起始蛇长+2', desc:'需要先购买+1', cost:200, type:'stat', req:'len1', apply(){}},
+  {id:'shield1', name:'护盾+1', desc:'每局额外获得一次免死护盾', cost:200, type:'stat', apply(){}},
+  {id:'skin_fire', name:'🔥 火焰蛇身', desc:'蛇身变为火焰渐变色', cost:60, type:'skin', apply(){}},
+  {id:'skin_ice', name:'❄️ 冰霜蛇身', desc:'蛇身变为冰霜渐变色', cost:60, type:'skin', apply(){}},
+  {id:'skin_galaxy', name:'🌌 银河蛇身', desc:'蛇身变为星空渐变色', cost:100, type:'skin', apply(){}},
+  {id:'card_greed', name:'解锁卡牌：贪婪', desc:'普通食物额外+2分 加入卡池', cost:120, type:'card', apply(){}},
+  {id:'card_regen', name:'解锁卡牌：再生', desc:'每过一关蛇身+2 加入卡池', cost:120, type:'card', apply(){}},
+  {id:'card_mirror', name:'解锁卡牌：镜像', desc:'特殊食物出现概率翻倍 加入卡池', cost:160, type:'card', apply(){}},
 ];
 
 function loadMetaCoins(){try{return parseInt(localStorage.getItem('snake_meta')||'0')}catch(e){return 0}}
@@ -956,7 +956,7 @@ function draw(){
   for(let i=0;i<=GRID;i++){const p=i*CELL;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,CH);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(CW,p);ctx.stroke()}
 
   // Obstacles
-  for(const o of obstacles)drawCell(o.x,o.y,'#ff4060','rgba(255,64,96,0.6)',0.85,true);
+  for(const o of obstacles)drawCell(o.x,o.y,'#bd00ff','rgba(189,0,255,0.7)',0.9,true);
 
   // Food
   if(food)drawCell(food.x,food.y,'#ff4060','rgba(255,64,96,0.7)',0.9,false);
@@ -1029,16 +1029,25 @@ function renderLeaderboard(entries){
   $('lbLoading').style.display='none';
   if(!entries.length){$('lbTable').style.display='none';$('lbLoading').style.display='block';$('lbLoading').textContent='暂无数据，快来抢第一！';return}
   $('lbTable').style.display='';
+
+  // Group by player_name, keep only the best score per player
+  const best=new Map();
+  for(const e of entries){
+    const key=e.player_name||'无名蛇';
+    if(!best.has(key)||e.score>best.get(key).score)best.set(key,e);
+  }
+  const ranked=Array.from(best.values()).sort((a,b)=>b.score-a.score).slice(0,50);
+
   const curName=$('playerName').value.trim()||'无名蛇';
-  $('lbBody').innerHTML=entries.map((e,i)=>{
+  $('lbBody').innerHTML=ranked.map((e,i)=>{
     const r=i+1;let rc='';if(r===1)rc='top1';else if(r===2)rc='top2';else if(r===3)rc='top3';
-    const isMe=e.player_name===curName&&e.score>=Math.floor(score)-2;
+    const isMe=e.player_name===curName;
     const time=new Date(e.created_at).toLocaleDateString('zh-CN',{month:'short',day:'numeric'});
     return`<tr class="${isMe?'me':''}"><td class="lb-rank ${rc}">${r}</td><td class="lb-name" title="${escapeHtml(e.player_name)}">${escapeHtml(e.player_name)}</td><td class="lb-score">${e.score}</td><td class="lb-stage">${e.stage||1}</td><td class="lb-level">Lv.${e.level||1}</td><td class="lb-time">${time}</td></tr>`;
   }).join('');
 
   // Check rank1 achievement
-  if(entries.length>0&&entries[0].player_name===curName&&entries[0].score>=Math.floor(score)-2){
+  if(ranked.length>0&&ranked[0].player_name===curName){
     achStats.reachedRank1=true;
     checkAchievements(achStats);
   }
