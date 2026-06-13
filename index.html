@@ -187,6 +187,9 @@
       <canvas id="gameCanvas" width="500" height="500"></canvas>
       <div class="inv-badge" id="invBadge">⭐ 无敌模式</div>
 
+      <!-- Auto shop button (visible only in auto mode) -->
+      <button id="autoShopBtn" style="display:none;position:absolute;top:8px;right:8px;z-index:8;padding:5px 10px;font-size:11px;font-weight:700;border-radius:10px;border:1px solid rgba(189,0,255,0.4);background:rgba(189,0,255,0.15);color:#bd00ff;cursor:pointer;letter-spacing:1px">🛒 商店</button>
+
       <div class="overlay" id="pauseOverlay">
         <div class="overlay-title pause">暂 停</div>
         <div class="overlay-subtitle">按 空格键 继续</div>
@@ -209,6 +212,16 @@
       <div class="upgrade-overlay" id="upgradeOverlay">
         <canvas id="upgradeParticles"></canvas>
         <div class="upgrade-content" id="upgradeContent"></div>
+      </div>
+
+      <!-- Auto shop panel -->
+      <div id="autoShopPanel" style="display:none;position:absolute;inset:0;z-index:18;background:rgba(0,0,0,0.92);backdrop-filter:blur(8px);flex-direction:column;overflow-y:auto;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:18px;font-weight:800;color:#bd00ff;text-shadow:0 0 16px rgba(189,0,255,0.4)">🛒 自动化商店</span>
+          <button id="autoShopClose" style="width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:16px;cursor:pointer">✕</button>
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:14px">💰 可用点数: <span id="autoShopBP" style="color:#ffd740;font-weight:700">0</span></div>
+        <div id="autoShopItems"></div>
       </div>
     </div>
 
@@ -376,6 +389,35 @@ let growExtra=0,scoreMult=1,specialChanceBonus=0,dodgeChance=0,shopPurchaseCount
 let bodyPoints=3; // body economy for shop & compression
 let mergeThreshold=4; // how many same-level segments to merge (lowered by merge_boost)
 let critChance=0,splitChance=0,goldenTouch=0,ghostTail=0;
+// Automation / idle mode (triggers at level 10)
+let autoMode=false,autoSpeedDivider=4,autoCollectRange=1,autoFoodBonus=0;
+let autoFoodSpawn=1,autoSpecialRate=0;
+
+const AUTO_SHOP=[
+  // Automation
+  {cat:'auto',icon:'⚡',name:'加速运算',desc:'自动化速度+25%',baseCost:10,apply:()=>{autoSpeedDivider=Math.max(1,autoSpeedDivider-0.25*4)}},
+  {cat:'auto',icon:'🎯',name:'寻路优化',desc:'自动收集范围+1',baseCost:25,apply:()=>{autoCollectRange++}},
+  {cat:'auto',icon:'🧠',name:'深度学习',desc:'AI更智能（优先特殊食物）',baseCost:40,apply:()=>{window._aiSmart=true}},
+  // Food
+  {cat:'food',icon:'🍎',name:'食物增值',desc:'每个食物多+3身体点数',baseCost:15,apply:()=>{autoFoodBonus+=3}},
+  {cat:'food',icon:'🍽️',name:'食物涌现',desc:'地图常驻食物+1',baseCost:20,apply:()=>{autoFoodSpawn++;spawnFood()}},
+  {cat:'food',icon:'🌟',name:'稀有增产',desc:'特殊食物出现率+10%',baseCost:30,apply:()=>{autoSpecialRate+=0.1}},
+  {cat:'food',icon:'💫',name:'双倍产出',desc:'偶尔一次吃出2个食物',baseCost:50,apply:()=>{splitChance+=0.15}},
+  // Environment
+  {cat:'env',icon:'🌃',name:'暗夜模式',desc:'深蓝背景 速度+10%',baseCost:20,apply:()=>{applyBg('night');autoSpeedDivider=Math.max(1,autoSpeedDivider-0.1*4)}},
+  {cat:'env',icon:'💚',name:'矩阵世界',desc:'绿色矩阵背景 速度+20%',baseCost:40,apply:()=>{applyBg('matrix');autoSpeedDivider=Math.max(1,autoSpeedDivider-0.2*4)}},
+  {cat:'env',icon:'🌌',name:'星河漫游',desc:'星空背景 所有得分×1.5',baseCost:60,apply:()=>{applyBg('galaxy');scoreMult*=1.5}},
+  {cat:'env',icon:'☀️',name:'曙光之地',desc:'金色背景 食物价值翻倍',baseCost:80,apply:()=>{applyBg('dawn');autoFoodBonus+=5}},
+];
+
+let autoShopPurchases={};
+function loadAutoShop(){try{autoShopPurchases=JSON.parse(localStorage.getItem('snake_auto_shop')||'{}')}catch(e){}}
+function saveAutoShop(){try{localStorage.setItem('snake_auto_shop',JSON.stringify(autoShopPurchases))}catch(e){}}
+
+function applyBg(bg){
+  const b=$('gameCanvas');
+  b.style.background=bg==='night'?'#0a0a2e':bg==='matrix'?'#0a0f0a':bg==='galaxy'?'#0a0a1a':bg==='dawn'?'#1a140a':'#080812';
+}
 
 function loadHighScore(){try{return parseInt(localStorage.getItem('snake_highscore')||'0')}catch(e){return 0}}
 function saveHighScore(v){try{localStorage.setItem('snake_highscore',v)}catch(e){}}
@@ -424,6 +466,10 @@ function initGame(){
   activeFree=[];activeShop=[];
   growExtra=0;scoreMult=1;specialChanceBonus=0;dodgeChance=0;shopPurchaseCount=0;
   bodyPoints=3;mergeThreshold=4;critChance=0;splitChance=0;goldenTouch=0;ghostTail=0;
+  autoMode=false;autoSpeedDivider=4;autoCollectRange=1;autoFoodBonus=0;
+  autoFoodSpawn=1;autoSpecialRate=0;window._aiSmart=false;
+  $('autoShopBtn').style.display='none';$('autoShopPanel').style.display='none';
+  $('gameCanvas').style.background='#080812';
   specialFood=null;konamiIdx=0;phaseTimer=0;
   highScore=loadHighScore();
   spawnFood();updateUI();hideOverlays();
@@ -466,7 +512,12 @@ function showUpgradeScreen(){
   pickedFree='';pickedShop='';
 
   let freeChoices,shopChoices;
-  if(isFirst){
+
+  // Level 10: automation transition!
+  if(level>=10&&!autoMode){
+    freeChoices=[{id:'enable_auto',icon:'🤖',name:'自动化',desc:'AI接管蛇的控制 速度降至1/4 游戏转为增量模式',cost:0,isAuto:true}];
+    shopChoices=[];
+  }else if(isFirst){
     freeChoices=FIRST_UPGRADES;shopChoices=[];
   }else{
     // Draw 3 (or 4 if lucky) free from full pool every time
@@ -480,8 +531,14 @@ function showUpgradeScreen(){
   const bp=totalBodyPoints();
   const shopCostScale=1+shopPurchaseCount*0.5;
 
-  let html=`<div class="upgrade-title">${isFirst?'⚡ 初次进化！':'🔮 选择升级'}</div>`;
-  html+=`<div class="upgrade-section-label">🆓 免费奖励（选1个）</div>`;
+  const isAutoTrans=level>=10&&!autoMode;
+  let html=`<div class="upgrade-title">${isFirst?'⚡ 初次进化！':isAutoTrans?'🤖 恭喜你爬入真实世界的大门':'🔮 选择升级'}</div>`;
+  if(isAutoTrans){
+    html+=`<div class="upgrade-subtitle" style="font-size:11px;color:rgba(255,255,255,0.35);margin:-8px 0 10px">恭喜你爬入真实世界的大门</div>`;
+    html+=`<div class="upgrade-section-label">🤖 唯一选择</div>`;
+  }else{
+    html+=`<div class="upgrade-section-label">🆓 免费奖励（选1个）</div>`;
+  }
   html+=`<div class="upgrade-row">`;
   for(const c of freeChoices){
     html+=`<div class="upgrade-card free pick-free ${isFirst?'first':''}" data-id="${c.id}">
@@ -530,11 +587,23 @@ function showUpgradeScreen(){
 
   $('btnConfirm').addEventListener('click',()=>{
     if(!pickedFree)return;
+
+    // Level 10 auto transition
+    if(pickedFree==='enable_auto'){
+      $('upgradeOverlay').classList.remove('active');stopParticles();
+      autoMode=true;
+      $('autoShopBtn').style.display='';
+      for(let i=0;i<autoFoodSpawn;i++)spawnFood();
+      paused=false;
+      tickTimer=setTimeout(gameTick,BASE_SPEED*autoSpeedDivider);
+      updateUI();draw();
+      return;
+    }
+
     // Apply shop cost from bodyPoints
     const shopCard=$('upgradeContent').querySelector(`.pick-shop[data-id="${pickedShop}"]`);
     let shopCost=0;
     if(pickedShop&&shopCard){shopCost=parseInt(shopCard.dataset.cost);shopPurchaseCount++}
-    // Remove segments worth shopCost body points
     if(shopCost>0)deductBodyPoints(shopCost);
 
     applyUpgrade(pickedFree,isFirst);
@@ -542,8 +611,8 @@ function showUpgradeScreen(){
     if(pickedFree==='bonus_food')foodEaten+=3;
     if(pickedFree==='body_surge'){for(let i=0;i<5;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
     if(pickedFree==='merge_boost')mergeThreshold=Math.max(2,mergeThreshold-1);
-    if(pickedFree==='lucky'){/* next upgrade gets 4 options - handled via simple flag */window._luckyNext=true}
-    if(pickedFree==='speedy'){/* 5s speed double + invincible */invincible=true;setTimeout(()=>{invincible=false},5000)}
+    if(pickedFree==='lucky'){window._luckyNext=true}
+    if(pickedFree==='speedy'){invincible=true;setTimeout(()=>{invincible=false},5000)}
     if(pickedFree==='gold_rush'){specialChanceBonus+=0.3;scheduleSpecialFood()}
     bodyPoints=totalBodyPoints();
 
@@ -652,6 +721,44 @@ function loopParticles(){
 function gameTick(){
   if(paused||gameOver)return;
   inputLocked=false;
+
+  // AI auto-movement (idle mode)
+  if(autoMode){
+    const h=snake[0];
+    // Pick target: prefer special food if smart AI
+    let target=specialFood;
+    if(!target||!window._aiSmart)target=food;
+    if(!target){target={x:Math.floor(GRID/2),y:Math.floor(GRID/2)}}
+    // Greedy path: prefer axis with bigger gap
+    const dx=target.x-h.x,dy=target.y-h.y;
+    const dirs=[];
+    if(Math.abs(dx)>=Math.abs(dy)){
+      dirs.push(dx>0?'right':'left',dy>0?'down':'up');
+    }else{
+      dirs.push(dy>0?'down':'up',dx>0?'right':'left');
+    }
+    // Add all possible directions
+    if(!dirs.includes('right'))dirs.push('right');
+    if(!dirs.includes('left'))dirs.push('left');
+    if(!dirs.includes('down'))dirs.push('down');
+    if(!dirs.includes('up'))dirs.push('up');
+    // Try each direction, pick first safe one
+    for(const d of dirs){
+      if(!isValidDirection(d))continue;
+      const test={...h};
+      switch(d){case'up':test.y--;break;case'down':test.y++;break;case'left':test.x--;break;case'right':test.x++}
+      // Check would this kill us?
+      const w=test.x<0||test.x>=GRID||test.y<0||test.y>=GRID;
+      if(w&&!wrapMode)continue;
+      const willEat=target&&test.x===target.x&&test.y===target.y;
+      let hitBody=false;
+      const clen=willEat?snake.length:snake.length-1;
+      for(let i=0;i<clen;i++){if(snake[i].x===test.x&&snake[i].y===test.y){hitBody=true;break}}
+      if(hitBody&&!noSelfCollide)continue;
+      direction=d;break;
+    }
+  }
+
   if(isValidDirection(nextDirection))direction=nextDirection;
 
   const head={...snake[0]};
@@ -697,15 +804,31 @@ function gameTick(){
     if(Date.now()-window._lastPeriodicShield>15000){shieldCount++;window._lastPeriodicShield=Date.now()}
   }
 
+  // Auto-collect: in auto mode, eat food within range
+  if(autoMode&&autoCollectRange>1){
+    const h=snake[0];
+    if(food&&Math.abs(food.x-h.x)+Math.abs(food.y-h.y)<=autoCollectRange&&!(food.x===h.x&&food.y===h.y)){
+      // Teleport food to head (simulate auto-collect)
+      food.x=h.x;food.y=h.y;
+    }
+    if(specialFood&&Math.abs(specialFood.x-h.x)+Math.abs(specialFood.y-h.y)<=autoCollectRange&&!(specialFood.x===h.x&&specialFood.y===h.y)){
+      specialFood.x=h.x;specialFood.y=h.y;
+    }
+  }
+
   if(willEatRegular){
     let pts=1*scoreMult;
     if(Math.random()<critChance)pts*=2;
     score+=pts;foodEaten++;
     const extraGrow=1+growExtra;
     for(let i=0;i<extraGrow-1;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
+    // Auto food bonus: extra body points
+    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
     sfxEat();spawnFood();
     if(Math.random()<goldenTouch&&!specialFood)spawnSpecialFood();
     if(Math.random()<splitChance)spawnFood();
+    if(autoMode)for(let i=0;i<autoFoodSpawn-1;i++)spawnFood();
+    if(autoMode&&Math.random()<autoSpecialRate&&!specialFood)spawnSpecialFood();
     if(specialFood&&food.x===specialFood.x&&food.y===specialFood.y)specialFood=null;
   }else if(willEatSpecial){
     const bonus=activeShop.some(c=>c.id==='double_special')?4:2;
@@ -714,6 +837,7 @@ function gameTick(){
     score+=pts;foodEaten++;achStats.totalSpecial++;
     const extraGrow=bonus+growExtra;
     for(let i=0;i<extraGrow;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
+    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
     sfxSpecial();specialFood=null;
   }else{snake.pop()}
 
@@ -747,14 +871,17 @@ function gameTick(){
   level=Math.floor(foodEaten/5)+1;
   updateUI();draw();
 
-  // Check upgrade trigger
-  if(foodEaten>=nextUpgradeAt){
+  // Check upgrade trigger (skip in auto mode)
+  if(!autoMode&&foodEaten>=nextUpgradeAt){
     nextUpgradeAt=foodEaten+UPGRADE_EVERY;
     showUpgradeScreen();
     return;
   }
 
-  if(!gameOver&&!paused)tickTimer=setTimeout(gameTick,getSpeed());
+  if(!gameOver&&!paused){
+    const spd=autoMode?BASE_SPEED*autoSpeedDivider:getSpeed();
+    tickTimer=setTimeout(gameTick,spd);
+  }
 }
 
 function endGame(){
@@ -797,7 +924,11 @@ function endGame(){
 function updateUI(){
   $('score').textContent=score;$('highScore').textContent=highScore;
   $('levelBadge').textContent=`Lv.${level}`;
-  $('nextUpgrade').textContent=`下次升级: ${nextUpgradeAt-foodEaten}🍎`;
+  if(autoMode){
+    $('nextUpgrade').textContent=`🤖 自动化中 | 点数:${totalBodyPoints()}`;
+  }else{
+    $('nextUpgrade').textContent=`下次升级: ${nextUpgradeAt-foodEaten}🍎`;
+  }
 }
 function hideOverlays(){
   $('pauseOverlay').classList.remove('active');$('gameOverOverlay').classList.remove('active');
@@ -941,7 +1072,7 @@ function showScreen(id){
 // INPUT
 // ============================================================
 const KEY_MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
-document.addEventListener('keydown',e=>{initAudio();const c=e.code;if(checkKonami(c)){toggleInvincible();e.preventDefault();return}if(c in KEY_MAP){e.preventDefault();if(gameOver||paused)return;changeDirection(KEY_MAP[c]);return}if(c==='Space'){e.preventDefault();togglePause();return}});
+document.addEventListener('keydown',e=>{initAudio();const c=e.code;if(checkKonami(c)){toggleInvincible();e.preventDefault();return}if(c in KEY_MAP){e.preventDefault();if(gameOver||paused||autoMode)return;changeDirection(KEY_MAP[c]);return}if(c==='Space'){e.preventDefault();togglePause();return}});
 try{const s=localStorage.getItem('snake_nickname');if(s)$('playerName').value=s}catch(e){}
 $('playerName').addEventListener('input',()=>{try{localStorage.setItem('snake_nickname',$('playerName').value.trim())}catch(e){}});
 $('btnPlay').addEventListener('click',()=>{initAudio();showScreen('gameScreen');initGame();draw()});
@@ -965,12 +1096,58 @@ $('lbClose').addEventListener('click',closeLeaderboard);
 $('lbRefresh').addEventListener('click',async()=>{$('lbLoading').style.display='block';$('lbLoading').textContent='加载中...';$('lbTable').style.display='none';const d=await fetchLeaderboard();renderLB(d)});
 $('lbModal').addEventListener('click',e=>{if(e.target===$('lbModal'))closeLeaderboard()});
 
-function setupDpad(id,dir){const el=$(id);if(!el)return;el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(gameOver||paused)return;changeDirection(dir)})}
+// Auto shop
+$('autoShopBtn').addEventListener('click',()=>{renderAutoShop();$('autoShopPanel').style.display='flex'});
+$('autoShopClose').addEventListener('click',()=>{$('autoShopPanel').style.display='none'});
+function renderAutoShop(){
+  const bp=totalBodyPoints();
+  $('autoShopBP').textContent=bp;
+  const cats={auto:'⚡ 自动化',food:'🍎 食物',env:'🌃 环境'};
+  const catOrder=['auto','food','env'];
+  let html='';
+  for(const cat of catOrder){
+    html+=`<div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.3);margin:12px 0 6px">${cats[cat]}</div>`;
+    for(const it of AUTO_SHOP.filter(i=>i.cat===cat)){
+      const owned=(autoShopPurchases[it.id]||0);
+      const cost=Math.ceil(it.baseCost*(1+owned*0.3));
+      const afford=bp>cost+1;
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin:3px 0;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05)">
+        <div style="flex:1;min-width:0"><span style="font-size:13px">${it.icon} ${it.name}</span><span style="font-size:10px;color:rgba(255,255,255,0.35);margin-left:6px">${it.desc}</span></div>
+        <button class="auto-buy-btn" data-id="${it.id}" data-cost="${cost}" style="margin-left:8px;padding:4px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid ${afford?'rgba(189,0,255,0.4)':'rgba(255,255,255,0.1)'};background:${afford?'rgba(189,0,255,0.1)':'rgba(255,255,255,0.03)'};color:${afford?'#bd00ff':'rgba(255,255,255,0.2)'};cursor:${afford?'pointer':'default'};white-space:nowrap" ${afford?'':'disabled'}>💰${cost}</button>
+      </div>`;
+    }
+  }
+  $('autoShopItems').innerHTML=html;
+  $('autoShopItems').querySelectorAll('.auto-buy-btn:not([disabled])').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.id,cost=parseInt(btn.dataset.cost);
+      const bp=totalBodyPoints();
+      if(bp<=cost+1)return;
+      deductBodyPoints(cost);
+      autoShopPurchases[id]=(autoShopPurchases[id]||0)+1;
+      saveAutoShop();
+      const it=AUTO_SHOP.find(i=>i.id===id);
+      if(it)it.apply();
+      if(bodyCompress)compressBody();
+      bodyPoints=totalBodyPoints();
+      updateUI();draw();
+      renderAutoShop();
+    });
+  });
+}
+loadAutoShop();
+// Re-apply purchased auto shop effects on page load
+for(const[id,count]of Object.entries(autoShopPurchases)){
+  const it=AUTO_SHOP.find(i=>i.id===id);
+  if(it)for(let i=0;i<count;i++)it.apply();
+}
+
+function setupDpad(id,dir){const el=$(id);if(!el)return;el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(gameOver||paused||autoMode)return;changeDirection(dir)})}
 setupDpad('dpadUp','up');setupDpad('dpadDown','down');setupDpad('dpadLeft','left');setupDpad('dpadRight','right');
 const dp=$('dpadPause');if(dp)dp.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();togglePause()});
 let tsx=0,tsy=0;const gc=$('gameCanvas');
 gc.addEventListener('touchstart',e=>{initAudio();tsx=e.touches[0].clientX;tsy=e.touches[0].clientY},{passive:true});
-gc.addEventListener('touchend',e=>{if(gameOver||paused)return;const dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;if(Math.abs(dx)<20&&Math.abs(dy)<20)return;if(Math.abs(dx)>Math.abs(dy))changeDirection(dx>0?'right':'left');else changeDirection(dy>0?'down':'up')});
+gc.addEventListener('touchend',e=>{if(gameOver||paused||autoMode)return;const dx=e.changedTouches[0].clientX-tsx,dy=e.changedTouches[0].clientY-tsy;if(Math.abs(dx)<20&&Math.abs(dy)<20)return;if(Math.abs(dx)>Math.abs(dy))changeDirection(dx>0?'right':'left');else changeDirection(dy>0?'down':'up')});
 
 // Update upgrade overlay canvas on resize
 new ResizeObserver(()=>{if(pRunning){pCanvas=$('upgradeParticles');pCtx=pCanvas.getContext('2d');pCanvas.width=pCanvas.offsetWidth;pCanvas.height=pCanvas.offsetHeight}}).observe($('upgradeOverlay'));
