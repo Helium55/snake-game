@@ -154,7 +154,7 @@
     <div class="menu-subtitle">R O G U E L I K E</div>
     <div class="menu-stats">
       <span>🏆 <b id="menuBestScore">0</b></span>
-      <span>🎖 <b id="menuAchCount">0/10</b></span>
+      <span>🎖 <b id="menuAchCount">0/11</b></span>
     </div>
     <button class="menu-btn primary" id="btnPlay">▶ 开始游戏</button>
     <button class="menu-btn" id="btnAchievements">🏆 成就</button>
@@ -228,7 +228,7 @@
   <div class="game-wrapper">
     <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:8px">
       <button class="btn-back" id="btnAchBack">← 返回</button>
-      <span style="font-size:14px;color:rgba(255,255,255,0.4)"><span id="achUnlocked">0</span>/10</span>
+      <span style="font-size:14px;color:rgba(255,255,255,0.4)"><span id="achUnlocked">0</span>/11</span>
     </div>
     <div class="ach-grid" id="achGrid" style="width:100%;display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow-y:auto"></div>
   </div>
@@ -294,6 +294,7 @@ const ACHIEVEMENTS=[
   {id:'speed_demon',icon:'⚡',name:'快如闪电',desc:'等级达到10',check:s=>s.maxLevel>=10},
   {id:'first_compress',icon:'🗜️',name:'压缩技术',desc:'选择了身体压缩升级',check:s=>s.hasCompress},
   {id:'first_immune',icon:'♾️',name:'自我免疫',desc:'选择了碰撞免疫升级',check:s=>s.hasImmune},
+  {id:'beat_devil',icon:'👑',name:'新任魔王',desc:'你也姓何——你成为了新的魔王',check:s=>s.beatDevil},
 ];
 
 function loadAch(){try{return JSON.parse(localStorage.getItem('snake_ach')||'{}')}catch(e){return{}}}
@@ -308,7 +309,7 @@ function showToast(a){
   el.innerHTML=`<div class="toast-icon">${a.icon}</div><div class="toast-info"><div class="toast-name">${a.name}</div><div class="toast-desc">${a.desc}</div></div>`;
   $('toastContainer').appendChild(el);sfxAchievement();setTimeout(()=>el.remove(),3100);
 }
-let achStats={totalFood:0,totalSpecial:0,upgradeCount:0,usedInvincible:false,maxLevel:0,hasCompress:false,hasImmune:false};
+let achStats={totalFood:0,totalSpecial:0,upgradeCount:0,usedInvincible:false,maxLevel:0,hasCompress:false,hasImmune:false,beatDevil:false};
 
 // ============================================================
 // UPGRADE DEFINITIONS
@@ -487,10 +488,18 @@ function showUpgradeScreen(){
   });
 }
 
+// Body compression: 4→1, recursive like 2048
+function compressBody(){
+  if(!bodyCompress||snake.length<4)return;
+  let n=snake.length;
+  while(n>=4){n=Math.floor(n/4)+(n%4)}
+  while(snake.length>Math.max(3,n))snake.pop();
+}
+
 function applyUpgrade(id,isFirst){
   if(isFirst){
     if(id==='no_self_collide'){noSelfCollide=true;achStats.hasImmune=true}
-    if(id==='body_compress'){bodyCompress=true;achStats.hasCompress=true}
+    if(id==='body_compress'){bodyCompress=true;achStats.hasCompress=true;compressBody()}
     return;
   }
 
@@ -502,6 +511,7 @@ function applyUpgrade(id,isFirst){
     if(id==='grow1')growExtra++;
     if(id==='score_boost')scoreMult=1.5;
     if(id==='special_chance'){specialChanceBonus+=0.15;scheduleSpecialFood()}
+    compressBody(); // auto-compress after each upgrade if applicable
     return;
   }
 
@@ -513,6 +523,7 @@ function applyUpgrade(id,isFirst){
     if(id==='wrap')wrapMode=true;
     if(id==='dodge')dodgeChance+=0.15;
     if(id==='phase')phaseTimer=0;
+    compressBody();
   }
 }
 
@@ -712,15 +723,10 @@ function draw(){
   if(specialFood){const age=Date.now()-specialFood.spawnTime,pulse=0.7+0.3*Math.sin(age*0.01),alpha=age>6000?Math.max(0,1-(age-6000)/2000):1;drawCell(specialFood.x,specialFood.y,'#ffd740',`rgba(255,215,64,${pulse*alpha})`,pulse)}
 
   const len=snake.length;
-  // Body compression: render every 4th segment (but keep full snake for collisions)
-  const renderSnake=bodyCompress?snake.filter((_,i)=>i===0||i%4===0):snake;
-  const renderLen=renderSnake.length;
-
-  for(let i=renderLen-1;i>=0;i--){
-    const seg=renderSnake[i],actualIdx=bodyCompress?i*4:len===1?0:bodyCompress?Math.min(i*4,len-1):i;
-    const t=renderLen===1?0:i/(renderLen-1);
+  for(let i=len-1;i>=0;i--){
+    const seg=snake[i],t=len===1?0:i/(len-1);
     let color,glow;
-    if(invincible){const hue=42+Math.sin(Date.now()*0.005+actualIdx*0.4)*10;color=`hsl(${hue},90%,${60-t*20}%)`;glow=`hsla(${hue},90%,55%,0.6)`}
+    if(invincible){const hue=42+Math.sin(Date.now()*0.005+i*0.4)*10;color=`hsl(${hue},90%,${60-t*20}%)`;glow=`hsla(${hue},90%,55%,0.6)`}
     else{const r=Math.round(0+t*138),g=Math.round(255-t*175),b=Math.round(136+t*119);color=`rgb(${r},${g},${b})`;glow=`rgba(${r},${g},${b},0.55)`}
     drawCell(seg.x,seg.y,color,glow,0.92);
   }
@@ -752,13 +758,35 @@ async function openLeaderboard(){$('lbModal').classList.add('active');$('lbLoadi
 function closeLeaderboard(){$('lbModal').classList.remove('active')}
 function renderLB(entries){
   $('lbLoading').style.display='none';
-  if(!entries.length){$('lbTable').style.display='none';$('lbLoading').style.display='block';$('lbLoading').textContent='暂无数据，快来抢第一！';return}
   $('lbTable').style.display='';
+
   const best=new Map();
   for(const e of entries){const k=e.player_name||'无名蛇';if(!best.has(k)||e.score>best.get(k).score)best.set(k,e)}
-  const ranked=Array.from(best.values()).sort((a,b)=>b.score-a.score).slice(0,50);
+  let ranked=Array.from(best.values()).sort((a,b)=>b.score-a.score);
+
+  // Insert 魔王 (Devil King) with score 999
+  const DEVIL={player_name:'魔王（姓何）',score:999,level:99,created_at:'2024-01-01T00:00:00Z'};
+  ranked.push(DEVIL);
+  ranked.sort((a,b)=>b.score-a.score);
+  ranked=ranked.slice(0,50);
+
   const curName=$('playerName').value.trim()||'无名蛇';
-  $('lbBody').innerHTML=ranked.map((e,i)=>{const r=i+1;let rc='';if(r===1)rc='top1';else if(r===2)rc='top2';else if(r===3)rc='top3';const isMe=e.player_name===curName;const time=new Date(e.created_at).toLocaleDateString('zh-CN',{month:'short',day:'numeric'});return`<tr class="${isMe?'me':''}"><td class="lb-rank ${rc}">${r}</td><td class="lb-name" title="${escapeHtml(e.player_name)}">${escapeHtml(e.player_name)}</td><td class="lb-score">${e.score}</td><td class="lb-level">Lv.${e.level||1}</td><td class="lb-time">${time}</td></tr>`}).join('');
+  $('lbBody').innerHTML=ranked.map((e,i)=>{
+    const r=i+1;let rc='';if(r===1)rc='top1';else if(r===2)rc='top2';else if(r===3)rc='top3';
+    const isDevil=e===DEVIL;
+    const isMe=!isDevil&&e.player_name===curName;
+    const time=isDevil?'???':new Date(e.created_at).toLocaleDateString('zh-CN',{month:'short',day:'numeric'});
+    const nameDisplay=isDevil?'<span style="color:#ff4060;text-shadow:0 0 8px rgba(255,64,96,0.5)">👑 魔王（姓何）</span>':escapeHtml(e.player_name);
+    const extraRow=isDevil?'<tr><td colspan="5" style="font-size:9px;color:rgba(255,255,255,0.2);padding:2px;border:none;text-align:right;font-style:italic">—— "为什么魔王会有中国姓啊"</td></tr>':'';
+    return`<tr class="${isMe?'me':''} ${isDevil?'devil':''}" ${isDevil?'style="background:rgba(255,64,96,0.04)"':''}"><td class="lb-rank ${rc}">${isDevil?'👑':r}</td><td class="lb-name" style="${isDevil?'color:#ff4060':''}">${nameDisplay}</td><td class="lb-score" style="${isDevil?'color:#ff4060;text-shadow:0 0 8px rgba(255,64,96,0.3)':''}">${e.score}</td><td class="lb-level">Lv.${e.level||1}</td><td class="lb-time">${time}</td></tr>${extraRow}`;
+  }).join('');
+
+  // Check if player beat the devil
+  const playerBest=best.get(curName);
+  if(playerBest&&playerBest.score>999&&!achStats.beatDevil){
+    achStats.beatDevil=true;
+    checkAchievements(achStats);
+  }
 }
 
 // ============================================================
@@ -767,7 +795,17 @@ function renderLB(entries){
 function renderAchScreen(){
   const ach=loadAch(),unlocked=Object.keys(ach).length;
   $('achUnlocked').textContent=unlocked;
-  $('achGrid').innerHTML=ACHIEVEMENTS.map(a=>{const u=!!ach[a.id];return`<div class="ach-item ${u?'':'locked'}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.04);${u?'':'opacity:0.35;filter:grayscale(0.8)'}"><div class="ach-icon" style="font-size:24px;flex-shrink:0">${a.icon}</div><div class="ach-info" style="flex:1"><div class="ach-name" style="font-size:13px;font-weight:600">${a.name}</div><div class="ach-desc" style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">${a.desc}</div></div>${u?'<div class="ach-check" style="color:var(--accent);font-size:16px;flex-shrink:0">✓</div>':''}</div>`}).join('');
+  $('achGrid').innerHTML=ACHIEVEMENTS.map(a=>{
+    const u=!!ach[a.id];
+    return`<div class="ach-item" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.04);${u?'':'opacity:0.3'}">
+      <div class="ach-icon" style="font-size:24px;flex-shrink:0">${u?a.icon:'❓'}</div>
+      <div class="ach-info" style="flex:1">
+        <div class="ach-name" style="font-size:13px;font-weight:600">${u?a.name:'???'}</div>
+        <div class="ach-desc" style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px">${u?a.desc:'完成更多挑战解锁此成就'}</div>
+      </div>
+      ${u?'<div class="ach-check" style="color:var(--accent);font-size:16px;flex-shrink:0">✓</div>':''}
+    </div>`;
+  }).join('');
 }
 
 // ============================================================
@@ -776,7 +814,7 @@ function renderAchScreen(){
 function showScreen(id){
   ['menuScreen','gameScreen','achScreen'].forEach(s=>$(s).classList.remove('active'));
   $(id).classList.add('active');
-  if(id==='menuScreen'){$('menuBestScore').textContent=loadHighScore();$('menuAchCount').textContent=Object.keys(loadAch()).length+'/10'}
+  if(id==='menuScreen'){$('menuBestScore').textContent=loadHighScore();$('menuAchCount').textContent=Object.keys(loadAch()).length+'/11'}
   if(id==='achScreen')renderAchScreen();
 }
 
