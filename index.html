@@ -550,7 +550,6 @@ function applyUpgrade(id,isFirst){
     if(id==='grow1')growExtra++;
     if(id==='score_boost')scoreMult=1.5;
     if(id==='special_chance'){specialChanceBonus+=0.15;scheduleSpecialFood()}
-    compressBody(); // auto-compress after each upgrade if applicable
     return;
   }
 
@@ -562,7 +561,6 @@ function applyUpgrade(id,isFirst){
     if(id==='wrap')wrapMode=true;
     if(id==='dodge')dodgeChance+=0.15;
     if(id==='phase')phaseTimer=0;
-    compressBody();
   }
 }
 
@@ -628,7 +626,7 @@ function gameTick(){
   if(hitWall){
     if(invincible||isPhasing||wrapMode){head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
     else if(shieldCount>0){shieldCount--;head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
-    else if(Math.random()<dodgeChance){/* dodged */}
+    else if(Math.random()<dodgeChance){head.x=(head.x+GRID)%GRID;head.y=(head.y+GRID)%GRID}
     else{endGame();return}
   }
 
@@ -674,18 +672,23 @@ function gameTick(){
   // Magnet
   if(activeShop.some(c=>c.id==='magnet')){
     const h=snake[0],d=3;
+    const onSnake=(x,y)=>snake.some(s=>s.x===x&&s.y===y);
     const pull=(obj)=>{
       if(!obj)return;
       if(Math.abs(obj.x-h.x)+Math.abs(obj.y-h.y)<=d){
-        if(obj.x<h.x)obj.x++;else if(obj.x>h.x)obj.x--;
-        else if(obj.y<h.y)obj.y++;else if(obj.y>h.y)obj.y--;
-        // Clamp to grid
-        obj.x=Math.max(0,Math.min(GRID-1,obj.x));
-        obj.y=Math.max(0,Math.min(GRID-1,obj.y));
+        const nx=obj.x<h.x?obj.x+1:obj.x>h.x?obj.x-1:obj.x;
+        const ny=obj.y<h.y?obj.y+1:obj.y>h.y?obj.y-1:obj.y;
+        // Only move if not on snake and in bounds
+        if(nx>=0&&nx<GRID&&ny>=0&&ny<GRID&&!onSnake(nx,ny)){
+          obj.x=nx;obj.y=ny;
+        }
       }
     };
     pull(food);pull(specialFood);
   }
+
+  // Auto body compression every tick
+  if(bodyCompress)compressBody();
 
   level=Math.floor(foodEaten/5)+1;
   updateUI();draw();
