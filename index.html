@@ -415,7 +415,7 @@ function loadAutoShop(){try{autoShopPurchases=JSON.parse(localStorage.getItem('s
 function saveAutoShop(){try{localStorage.setItem('snake_auto_shop',JSON.stringify(autoShopPurchases))}catch(e){}}
 
 function applyBg(bg){
-  const b=$('gameCanvas');
+  const b=$('gameCanvas');if(!b)return;
   b.style.background=bg==='night'?'#0a0a2e':bg==='matrix'?'#0a0f0a':bg==='galaxy'?'#0a0a1a':bg==='dawn'?'#1a140a':'#080812';
 }
 
@@ -487,7 +487,7 @@ function scheduleSpecialFood(){
 function spawnSpecialFood(){
   let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){specialFood=c;specialFood.spawnTime=Date.now()}
 }
-function spawnFood(){let c;do{c=randomCell()}while(isOccupied(c,false));food=c}
+function spawnFood(){if(!snake||!snake.length)return;let c;do{c=randomCell()}while(isOccupied(c,false));food=c}
 function isOccupied(cell,skipTail){
   if(snake.some((s,i)=>s.x===cell.x&&s.y===cell.y&&!(skipTail&&i===snake.length-1)))return true;
   if(food&&food.x===cell.x&&food.y===cell.y)return true;
@@ -1136,10 +1136,15 @@ function renderAutoShop(){
   });
 }
 loadAutoShop();
-// Re-apply purchased auto shop effects on page load
+// Re-apply safe effects on load (skip anything that needs game state)
 for(const[id,count]of Object.entries(autoShopPurchases)){
   const it=AUTO_SHOP.find(i=>i.id===id);
-  if(it)for(let i=0;i<count;i++)it.apply();
+  if(!it)continue;
+  for(let i=0;i<count;i++){
+    try{
+      if(it.cat==='env'||id==='auto_speed'||(it.cat==='auto'&&id!=='auto_food_spawn'))it.apply();
+    }catch(e){/* skip effects that need game state */}
+  }
 }
 
 function setupDpad(id,dir){const el=$(id);if(!el)return;el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(gameOver||paused||autoMode)return;changeDirection(dir)})}
