@@ -177,6 +177,42 @@ __testResult = { before, after: totalBodyPoints(), levels: snake.map(s => s.lvl 
 assert.equal(compressedMove.gameOver, false);
 assert.equal(compressedMove.after, compressedMove.before, 'moving without eating must not destroy compressed body points');
 
+const compressedRepresentation = runScenario(`
+snake = [
+  {x:8,y:5,lvl:1},{x:7,y:5,lvl:1},{x:6,y:5,lvl:1},{x:5,y:5,lvl:1},
+  {x:4,y:5,lvl:1},{x:3,y:5,lvl:1},{x:2,y:5,lvl:1},{x:1,y:5,lvl:1},
+  {x:0,y:5,lvl:1},{x:0,y:6,lvl:1},{x:0,y:7,lvl:1}
+];
+bodyCompress = true;
+mergeThreshold = 4;
+const before = totalBodyPoints();
+compressBody();
+const afterCompress = totalBodyPoints();
+const afterCompressLevels = snake.map(s => s.lvl || 1);
+direction = 'right';
+nextDirection = 'right';
+food = {x:9,y:5};
+foods = [food];
+specialFood = null;
+paused = false;
+gameOver = false;
+gameTick();
+clearTimeout(tickTimer);
+__testResult = {
+  before,
+  afterCompress,
+  afterEat: totalBodyPoints(),
+  afterCompressLevels,
+  afterEatLevels: snake.map(s => s.lvl || 1),
+  gameOver
+};
+`);
+
+assert.equal(compressedRepresentation.before, 11);
+assert.equal(compressedRepresentation.afterCompress, 11, 'compression should preserve total body points');
+assert.equal(compressedRepresentation.afterEat, 12, 'eating after compression should still add one body point');
+assert.equal(JSON.stringify(compressedRepresentation.afterEatLevels), JSON.stringify([2, 2, 2]), '12 points should fold into three level-2 body segments');
+
 const autoCollect = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
 direction = 'right';

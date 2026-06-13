@@ -439,26 +439,25 @@ function getSpeed(){
 function totalBodyPoints(){
   let p=0;for(const s of snake)p+=Math.pow(mergeThreshold,(s.lvl||1)-1);return p;
 }
-// 2048-style: merge same-level groups from tail
+function bodyLevelsFromPoints(points){
+  const levels=[];
+  for(let lvl=8;lvl>=1;lvl--){
+    const val=Math.pow(mergeThreshold,lvl-1);
+    while(points>=val){levels.push(lvl);points-=val}
+  }
+  return levels.length?levels:[1];
+}
+function rebuildBodyFromLevels(levels){
+  const path=snake.map(s=>({x:s.x,y:s.y}));
+  const tail=path[path.length-1]||path[0]||{x:Math.floor(GRID/2),y:Math.floor(GRID/2)};
+  snake=levels.map((lvl,i)=>{
+    const pos=path[Math.min(i,path.length-1)]||tail;
+    return{x:pos.x,y:pos.y,lvl};
+  });
+}
 function compressBody(){
-  if(!bodyCompress||snake.length<mergeThreshold+1)return;
-  let merged;
-  do{
-    merged=false;
-    for(let lvl=1;lvl<=6;lvl++){
-      let count=0;
-      for(let i=snake.length-1;i>=1;i--){if((snake[i].lvl||1)===lvl)count++;else break}
-      if(count>=mergeThreshold){
-        let removed=0;
-        for(let i=snake.length-1;i>=1&&removed<mergeThreshold;i--){
-          if((snake[i].lvl||1)===lvl){snake.splice(i,1);removed++}
-        }
-        const last=snake[snake.length-1]||snake[0];
-        snake.push({x:last.x,y:last.y,lvl:lvl+1});
-        merged=true;break;
-      }
-    }
-  }while(merged);
+  if(!bodyCompress||snake.length<mergeThreshold)return;
+  rebuildBodyFromLevels(bodyLevelsFromPoints(totalBodyPoints()));
 }
 
 function initGame(){
@@ -791,7 +790,7 @@ function gameTick(){
 
   if(!autoMode&&isValidDirection(nextDirection))direction=nextDirection;
 
-  const head={...snake[0]};
+  const head={x:snake[0].x,y:snake[0].y,lvl:1};
   switch(direction){case'up':head.y--;break;case'down':head.y++;break;case'left':head.x--;break;case'right':head.x++;break}
 
   // Wall
