@@ -296,7 +296,7 @@ const ACHIEVEMENTS=[
   {id:'speed_demon',icon:'⚡',name:'快如闪电',desc:'等级达到10',check:s=>s.maxLevel>=10},
   {id:'first_compress',icon:'🗜️',name:'压缩技术',desc:'选择了身体压缩升级',check:s=>s.hasCompress},
   {id:'first_immune',icon:'♾️',name:'自我免疫',desc:'选择了碰撞免疫升级',check:s=>s.hasImmune},
-  {id:'beat_devil',icon:'👑',name:'新任魔王',desc:'你也姓何——你成为了新的魔王',check:s=>s.beatDevil},
+  {id:'beat_devil',icon:'👑',name:'新任魔王',desc:'击败魔王helium，你成为了新的魔王',check:s=>s.beatDevil},
 ];
 
 function loadAch(){try{return JSON.parse(localStorage.getItem('snake_ach')||'{}')}catch(e){return{}}}
@@ -810,7 +810,7 @@ function renderLB(entries){
   let ranked=Array.from(best.values()).sort((a,b)=>b.score-a.score);
 
   // Insert 魔王 (Devil King) with score 999
-  const DEVIL={player_name:'魔王（姓何）',score:999,level:99,created_at:'2024-01-01T00:00:00Z'};
+  const DEVIL={player_name:'魔王helium',score:999,level:99,created_at:'2024-01-01T00:00:00Z'};
   ranked.push(DEVIL);
   ranked.sort((a,b)=>b.score-a.score);
   ranked=ranked.slice(0,50);
@@ -821,8 +821,8 @@ function renderLB(entries){
     const isDevil=e===DEVIL;
     const isMe=!isDevil&&e.player_name===curName;
     const time=isDevil?'???':new Date(e.created_at).toLocaleDateString('zh-CN',{month:'short',day:'numeric'});
-    const nameDisplay=isDevil?'<span style="color:#ff4060;text-shadow:0 0 8px rgba(255,64,96,0.5)">👑 魔王（姓何）</span>':escapeHtml(e.player_name);
-    const extraRow=isDevil?'<tr><td colspan="5" style="font-size:9px;color:rgba(255,255,255,0.2);padding:2px;border:none;text-align:right;font-style:italic">—— "为什么魔王会有中国姓啊"</td></tr>':'';
+    const nameDisplay=isDevil?'<span style="color:#ff4060;text-shadow:0 0 8px rgba(255,64,96,0.5)">👑 魔王helium</span>':escapeHtml(e.player_name);
+    const extraRow=isDevil?'<tr><td colspan="5" style="font-size:9px;color:rgba(255,255,255,0.2);padding:2px;border:none;text-align:right;font-style:italic">—— "看名字就知道很稀有"</td></tr>':'';
     return`<tr class="${isMe?'me':''} ${isDevil?'devil':''}" ${isDevil?'style="background:rgba(255,64,96,0.04)"':''}"><td class="lb-rank ${rc}">${isDevil?'👑':r}</td><td class="lb-name" style="${isDevil?'color:#ff4060':''}">${nameDisplay}</td><td class="lb-score" style="${isDevil?'color:#ff4060;text-shadow:0 0 8px rgba(255,64,96,0.3)':''}">${e.score}</td><td class="lb-level">Lv.${e.level||1}</td><td class="lb-time">${time}</td></tr>${extraRow}`;
   }).join('');
 
