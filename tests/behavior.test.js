@@ -253,6 +253,17 @@ assert.equal(autoBodyGrowth.foodEaten, 1);
 assert.equal(autoBodyGrowth.after, autoBodyGrowth.before + 1, 'eating regular food in auto mode should increase body points');
 assert.equal(autoBodyGrowth.length, 4, 'regular food should grow the snake by one segment');
 
+const autoSpeedUpgrade = runScenario(`
+autoSpeedDivider = 4;
+AUTO_SHOP.find(i => i.id === 'auto_speed').apply();
+const afterFirst = autoSpeedDivider;
+AUTO_SHOP.find(i => i.id === 'auto_speed').apply();
+__testResult = { afterFirst, afterSecond: autoSpeedDivider };
+`);
+
+assert.equal(autoSpeedUpgrade.afterFirst, 3.2, 'auto speed +25% should reduce the tick divider by 1/1.25');
+assert.equal(autoSpeedUpgrade.afterSecond, 2.56, 'auto speed upgrades should stack multiplicatively');
+
 const multiFood = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
 food = {x:6,y:5};

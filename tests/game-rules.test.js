@@ -37,4 +37,20 @@ for (const marker of [
   assert(source.includes(marker), `expected implemented upgrade mechanic marker: ${marker}`);
 }
 
+for (const id of [
+  'auto_speed',
+  'auto_collect',
+  'auto_smart',
+  'auto_food_bonus',
+  'auto_food_spawn',
+  'auto_special_rate',
+  'auto_split',
+  'env_night',
+  'env_matrix',
+  'env_galaxy',
+  'env_dawn',
+]) {
+  assert(source.includes(`id:'${id}'`), `auto shop item must have stable id: ${id}`);
+}
+
 console.log('game rule source checks passed');

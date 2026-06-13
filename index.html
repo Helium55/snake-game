@@ -398,19 +398,19 @@ let autoFoodSpawn=1,autoSpecialRate=0;
 
 const AUTO_SHOP=[
   // Automation
-  {cat:'auto',icon:'⚡',name:'加速运算',desc:'自动化速度+25%',baseCost:10,apply:()=>{autoSpeedDivider=Math.max(1,autoSpeedDivider-0.25*4)}},
-  {cat:'auto',icon:'🎯',name:'寻路优化',desc:'自动收集范围+1',baseCost:25,apply:()=>{autoCollectRange++}},
-  {cat:'auto',icon:'🧠',name:'深度学习',desc:'AI更智能（优先特殊食物）',baseCost:40,apply:()=>{window._aiSmart=true}},
+  {id:'auto_speed',cat:'auto',icon:'⚡',name:'加速运算',desc:'自动化速度+25%',baseCost:10,apply:()=>{autoSpeedDivider=Math.max(1,autoSpeedDivider/1.25)}},
+  {id:'auto_collect',cat:'auto',icon:'🎯',name:'寻路优化',desc:'自动收集范围+1',baseCost:25,apply:()=>{autoCollectRange++}},
+  {id:'auto_smart',cat:'auto',icon:'🧠',name:'深度学习',desc:'AI更智能（优先特殊食物）',baseCost:40,apply:()=>{window._aiSmart=true}},
   // Food
-  {cat:'food',icon:'🍎',name:'食物增值',desc:'每个食物多+3身体点数',baseCost:15,apply:()=>{autoFoodBonus+=3}},
-  {cat:'food',icon:'🍽️',name:'食物涌现',desc:'地图常驻食物+1',baseCost:20,apply:()=>{autoFoodSpawn++;spawnFood()}},
-  {cat:'food',icon:'🌟',name:'稀有增产',desc:'特殊食物出现率+10%',baseCost:30,apply:()=>{autoSpecialRate+=0.1}},
-  {cat:'food',icon:'💫',name:'双倍产出',desc:'偶尔一次吃出2个食物',baseCost:50,apply:()=>{splitChance+=0.15}},
+  {id:'auto_food_bonus',cat:'food',icon:'🍎',name:'食物增值',desc:'每个食物多+3身体点数',baseCost:15,apply:()=>{autoFoodBonus+=3}},
+  {id:'auto_food_spawn',cat:'food',icon:'🍽️',name:'食物涌现',desc:'地图常驻食物+1',baseCost:20,apply:()=>{autoFoodSpawn++;spawnFood()}},
+  {id:'auto_special_rate',cat:'food',icon:'🌟',name:'稀有增产',desc:'特殊食物出现率+10%',baseCost:30,apply:()=>{autoSpecialRate+=0.1}},
+  {id:'auto_split',cat:'food',icon:'💫',name:'双倍产出',desc:'偶尔一次吃出2个食物',baseCost:50,apply:()=>{splitChance+=0.15}},
   // Environment
-  {cat:'env',icon:'🌃',name:'暗夜模式',desc:'深蓝背景 速度+10%',baseCost:20,apply:()=>{applyBg('night');autoSpeedDivider=Math.max(1,autoSpeedDivider-0.1*4)}},
-  {cat:'env',icon:'💚',name:'矩阵世界',desc:'绿色矩阵背景 速度+20%',baseCost:40,apply:()=>{applyBg('matrix');autoSpeedDivider=Math.max(1,autoSpeedDivider-0.2*4)}},
-  {cat:'env',icon:'🌌',name:'星河漫游',desc:'星空背景 所有得分×1.5',baseCost:60,apply:()=>{applyBg('galaxy');scoreMult*=1.5}},
-  {cat:'env',icon:'☀️',name:'曙光之地',desc:'金色背景 食物价值翻倍',baseCost:80,apply:()=>{applyBg('dawn');autoFoodBonus+=5}},
+  {id:'env_night',cat:'env',icon:'🌃',name:'暗夜模式',desc:'深蓝背景 速度+10%',baseCost:20,apply:()=>{applyBg('night');autoSpeedDivider=Math.max(1,autoSpeedDivider/1.1)}},
+  {id:'env_matrix',cat:'env',icon:'💚',name:'矩阵世界',desc:'绿色矩阵背景 速度+20%',baseCost:40,apply:()=>{applyBg('matrix');autoSpeedDivider=Math.max(1,autoSpeedDivider/1.2)}},
+  {id:'env_galaxy',cat:'env',icon:'🌌',name:'星河漫游',desc:'星空背景 所有得分×1.5',baseCost:60,apply:()=>{applyBg('galaxy');scoreMult*=1.5}},
+  {id:'env_dawn',cat:'env',icon:'☀️',name:'曙光之地',desc:'金色背景 食物价值翻倍',baseCost:80,apply:()=>{applyBg('dawn');autoFoodBonus+=5}},
 ];
 
 let autoShopPurchases={};
