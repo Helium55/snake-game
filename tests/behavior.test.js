@@ -411,4 +411,37 @@ __testResult = {
 
 assert.equal(JSON.stringify(bodyLevelCap.levels), JSON.stringify([16]), 'body compression should support level 16');
 
+const magnetLevelCap = runScenario(`
+applyUpgrade('magnet', false);
+applyUpgrade('magnet', false);
+applyUpgrade('magnet', false);
+applyUpgrade('magnet', false);
+__testResult = {
+  level: activeShop.filter(c => c.id === 'magnet').length
+};
+`);
+
+assert.equal(magnetLevelCap.level, 3, 'magnet shop upgrade should cap at level 3');
+
+const highLevelMagnetRange = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+direction = 'right';
+nextDirection = 'right';
+activeShop = [
+  SHOP_UPGRADES.find(c => c.id === 'magnet'),
+  SHOP_UPGRADES.find(c => c.id === 'magnet'),
+  SHOP_UPGRADES.find(c => c.id === 'magnet')
+];
+food = {x:11,y:5};
+foods = [food];
+specialFood = null;
+paused = false;
+gameOver = false;
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { food: foods[0] };
+`);
+
+assert.equal(highLevelMagnetRange.food.x, 10, 'level-3 magnet should pull food from farther away than level 1');
+
 console.log('behavior checks passed');

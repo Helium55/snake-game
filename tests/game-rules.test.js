@@ -26,6 +26,16 @@ assert(
 );
 
 assert(
+  /SHOP_UPGRADES\.filter\(c=>!\(c\.id==='magnet'&&magnetLevel\(\)>=3\)\)/.test(source),
+  'max-level magnet should be removed from the shop draw pool'
+);
+
+assert(
+  /if\(pickedShop===card\.dataset\.id\)\{card\.style\.boxShadow='';pickedShop='';updateConfirmBtn\(\);return\}/.test(source),
+  'clicking the selected shop upgrade again should cancel that optional purchase'
+);
+
+assert(
   /\.upgrade-overlay\{[^}]*overflow-y:auto/.test(source) &&
   /\.upgrade-overlay\{[^}]*-webkit-overflow-scrolling:touch/.test(source) &&
   /\.upgrade-overlay\{[^}]*touch-action:pan-y/.test(source),

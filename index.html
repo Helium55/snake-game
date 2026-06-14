@@ -538,6 +538,9 @@ function spawnSpecialFood(){
 }
 function syncPrimaryFood(){food=foods&&foods.length?foods[0]:null}
 function spawnFood(){if(!snake||!snake.length)return;let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){foods.push({...c,lvl:1});mergeFoods();syncPrimaryFood()}}
+function shopUpgradeLevel(id){return activeShop.filter(c=>c.id===id).length}
+function magnetLevel(){return Math.min(3,shopUpgradeLevel('magnet'))}
+function magnetRange(){return magnetLevel()>0?3+(magnetLevel()-1)*2:0}
 function mergeFoods(){
   if(!foods||foods.length<FOOD_MERGE_COUNT)return;
   let merged=true;
@@ -657,7 +660,7 @@ function showUpgradeScreen(){
     );
     const sf=[...availableFreeUpgrades].sort(()=>Math.random()-0.5).slice(0,count);
     freeChoices=sf;
-    const ss=[...SHOP_UPGRADES].sort(()=>Math.random()-0.5).slice(0,2);
+    const ss=[...SHOP_UPGRADES.filter(c=>!(c.id==='magnet'&&magnetLevel()>=3))].sort(()=>Math.random()-0.5).slice(0,2);
     shopChoices=ss;
   }
 
@@ -687,9 +690,11 @@ function showUpgradeScreen(){
     for(const c of shopChoices){
       const cost=Math.ceil(c.baseCost*shopCostScale);
       const afford=bp>=cost;
+      const levelText=c.id==='magnet'?` Lv.${magnetLevel()+1}/3`:'';
+      const desc=c.id==='magnet'?`${c.desc} (range ${magnetRange()||3}->${3+magnetLevel()*2})`:c.desc;
       html+=`<div class="upgrade-card shop pick-shop ${afford?'':'unaffordable'}" data-id="${c.id}" data-cost="${cost}">
-        <div class="upgrade-icon">${c.icon}</div><div class="upgrade-name">${c.name}</div>
-        <div class="upgrade-desc">${c.desc}</div><div class="upgrade-cost seg-cost">🟣 ${cost} 点</div>
+        <div class="upgrade-icon">${c.icon}</div><div class="upgrade-name">${c.name}${levelText}</div>
+        <div class="upgrade-desc">${desc}</div><div class="upgrade-cost seg-cost">🟣 ${cost} 点</div>
       </div>`;
     }
     html+=`</div>`;
@@ -710,6 +715,7 @@ function showUpgradeScreen(){
   });
   $('upgradeContent').querySelectorAll('.pick-shop:not(.unaffordable)').forEach(card=>{
     card.addEventListener('click',()=>{
+      if(pickedShop===card.dataset.id){card.style.boxShadow='';pickedShop='';updateConfirmBtn();return}
       $('upgradeContent').querySelectorAll('.pick-shop').forEach(c=>c.style.boxShadow='');
       card.style.boxShadow='0 0 0 3px #bd00ff, 0 0 20px rgba(189,0,255,0.5)';
       pickedShop=card.dataset.id;updateConfirmBtn();
@@ -816,6 +822,7 @@ function applyUpgrade(id,isFirst){
   }
   const shop=SHOP_UPGRADES.find(c=>c.id===id);
   if(shop){
+    if(id==='magnet'&&magnetLevel()>=3)return;
     activeShop.push(shop);
     if(id==='shield')shieldCount++;
     if(id==='wrap')wrapMode=true;
@@ -987,8 +994,8 @@ function gameTick(){
   if(specialFood&&Date.now()-specialFood.spawnTime>8000)specialFood=null;
 
   // Magnet
-  if(activeShop.some(c=>c.id==='magnet')){
-    const h=snake[0],d=3;
+  if(magnetLevel()>0){
+    const h=snake[0],d=magnetRange();
     const onSnake=(x,y)=>snake.some(s=>s.x===x&&s.y===y);
     const pull=(obj)=>{
       if(!obj)return;
