@@ -437,8 +437,7 @@ const AUTO_SHOP=[
 ];
 
 let autoShopPurchases={};
-function loadAutoShop(){try{autoShopPurchases=JSON.parse(localStorage.getItem('snake_auto_shop')||'{}')}catch(e){}}
-function saveAutoShop(){try{localStorage.setItem('snake_auto_shop',JSON.stringify(autoShopPurchases))}catch(e){}}
+function resetAutoShop(){autoShopPurchases={}}
 
 function applyBg(bg){
   const b=$('gameCanvas');if(!b)return;
@@ -516,6 +515,7 @@ function initGame(){
   runStartTime=Date.now();tailGrowTimer=runStartTime;maxShieldBonus=0;timeWarpTimer=runStartTime;timeWarpUntil=0;safeZoneUntil=runStartTime+5000;revengeUntil=0;
   autoMode=false;autoSpeedDivider=4;autoCollectRange=1;autoFoodBonus=0;
   autoFoodSpawn=1;autoSpecialRate=0;window._aiSmart=false;
+  resetAutoShop();
   $('autoShopBtn').style.display='none';$('autoShopPanel').style.display='none';
   $('gameCanvas').style.background='#080812';
   specialFood=null;konamiIdx=0;phaseTimer=0;
@@ -1308,7 +1308,6 @@ function renderAutoShop(){
       if(bp<cost)return;
       deductBodyPoints(cost);
       autoShopPurchases[id]=(autoShopPurchases[id]||0)+1;
-      saveAutoShop();
       const it=AUTO_SHOP.find(i=>i.id===id);
       if(it)it.apply();
       if(bodyCompress)compressBody();
@@ -1317,17 +1316,6 @@ function renderAutoShop(){
       renderAutoShop();
     });
   });
-}
-loadAutoShop();
-// Re-apply safe effects on load (skip anything that needs game state)
-for(const[id,count]of Object.entries(autoShopPurchases)){
-  const it=AUTO_SHOP.find(i=>i.id===id);
-  if(!it)continue;
-  for(let i=0;i<count;i++){
-    try{
-      if(it.cat==='env'||id==='auto_speed'||(it.cat==='auto'&&id!=='auto_food_spawn'))it.apply();
-    }catch(e){/* skip effects that need game state */}
-  }
 }
 
 const DPAD_KONAMI={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'};

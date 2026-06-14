@@ -269,6 +269,33 @@ __testResult = { afterFirst, afterSecond: autoSpeedDivider };
 assert.equal(autoSpeedUpgrade.afterFirst, 3.2, 'auto speed +25% should reduce the tick divider by 1/1.25');
 assert.equal(autoSpeedUpgrade.afterSecond, 2.56, 'auto speed upgrades should stack multiplicatively');
 
+const autoShopResetsForNewGame = runScenario(`
+autoShopPurchases = { auto_speed: 2, auto_food_bonus: 1, env_galaxy: 1 };
+autoSpeedDivider = 2.56;
+autoFoodBonus = 8;
+scoreMult = 1.5;
+initGame();
+clearTimeout(tickTimer);
+if (specialFoodTimer) clearInterval(specialFoodTimer);
+__testResult = {
+  purchaseKeys: Object.keys(autoShopPurchases),
+  autoSpeedDivider,
+  autoFoodBonus,
+  scoreMult,
+  autoCollectRange,
+  autoFoodSpawn,
+  autoSpecialRate
+};
+`);
+
+assert.equal(autoShopResetsForNewGame.purchaseKeys.length, 0, 'starting a new game should clear automation shop purchases');
+assert.equal(autoShopResetsForNewGame.autoSpeedDivider, 4, 'starting a new game should reset automation speed');
+assert.equal(autoShopResetsForNewGame.autoFoodBonus, 0, 'starting a new game should reset automation food bonuses');
+assert.equal(autoShopResetsForNewGame.scoreMult, 1, 'starting a new game should reset environment score bonuses');
+assert.equal(autoShopResetsForNewGame.autoCollectRange, 1, 'starting a new game should reset automation collect range');
+assert.equal(autoShopResetsForNewGame.autoFoodSpawn, 1, 'starting a new game should reset automation food spawn count');
+assert.equal(autoShopResetsForNewGame.autoSpecialRate, 0, 'starting a new game should reset automation special rate');
+
 const playerSpeedMultiplier = runScenario(`
 level = 1;
 activeFree = [];
