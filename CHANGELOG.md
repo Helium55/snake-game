@@ -1,0 +1,32 @@
+# Changelog
+
+All notable changes to this project should be recorded here.
+
+## [0.1.0] - 2026-06-14
+
+Baseline version for GitHub Pages rollback points.
+
+### Added
+
+- Added `AGENTS.md` as the handoff guide for future AI agents.
+- Added mobile A/B buttons for entering the Konami invincibility toggle.
+- Added player speed slider that scales both tick speed and score gain.
+- Added food merging: four adjacent same-level foods combine into one higher-level food.
+
+### Changed
+
+- Automation shop purchases are per-run only and reset on every new game.
+- Magnet shop upgrade now has 3 levels with increasing range and no longer appears after max level.
+- Optional paid shop card selection can be canceled by clicking the selected card again.
+- Body compression supports body levels up to 16.
+- Upgrade overlay remains scrollable on mobile.
+
+### Fixed
+
+- Fixed automation pathfinding keeping stale manual direction.
+- Fixed automation score/body growth stalling after level 10.
+- Fixed compressed-body eating not increasing body points.
+- Fixed automation speed upgrades not taking effect.
+- Fixed timed invincibility expiring and turning off cheat invincibility.
+- Fixed speed-scaled upgrade progress blocking upgrades.
+

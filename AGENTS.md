@@ -19,8 +19,10 @@ Read this file, `CLAUDE.md`, `index.html`, and the tests before making changes.
 3. Keep edits scoped. Do not rewrite the whole single-file game unless explicitly asked.
 4. Preserve unrelated user or generated changes.
 5. Run verification before claiming the work is complete.
-6. Commit and push finished work to `origin main` unless the user explicitly says not to.
-7. Update this `AGENTS.md` when you add durable project knowledge, workflows, commands, or gameplay systems that future agents should know.
+6. Update `VERSION` and `CHANGELOG.md` for every user-visible fix, feature, or gameplay change.
+7. Commit and push finished work to `origin main` unless the user explicitly says not to.
+8. Create and push a Git version tag for every completed update so bad releases can be rolled back.
+9. Update this `AGENTS.md` when you add durable project knowledge, workflows, commands, or gameplay systems that future agents should know.
 
 Do not touch unrelated untracked files. In recent sessions, `.gitignore` has existed as an untracked file and should be ignored unless the user asks for it.
 
@@ -51,6 +53,37 @@ $html = Invoke-WebRequest -UseBasicParsing "https://helium55.github.io/snake-gam
 ```
 
 Then check for a marker from the change.
+
+## Versioning And Rollback
+
+Use semantic-ish versions:
+
+- Patch (`0.1.1`): bug fixes and small balance/UI fixes.
+- Minor (`0.2.0`): new gameplay systems, larger features, or meaningful behavior changes.
+- Major (`1.0.0`): only for a stable public milestone.
+
+For every completed update:
+
+1. Bump `VERSION`.
+2. Add a dated entry to `CHANGELOG.md` with `Added`, `Changed`, and/or `Fixed` bullets.
+3. Commit the code, tests, `VERSION`, and `CHANGELOG.md`.
+4. Tag the commit:
+
+```powershell
+git tag -a v0.1.1 -m "v0.1.1 - short release summary"
+git push origin main
+git push origin v0.1.1
+```
+
+To roll back GitHub Pages to a known good version:
+
+```powershell
+git checkout main
+git revert --no-edit <bad-commit>
+git push origin main
+```
+
+For a stronger rollback to a specific tag, create a new revert commit that restores that tag's tree rather than rewriting public history.
 
 ## Important Code Areas
 
@@ -107,4 +140,3 @@ Potential future optimizations:
 - Make food merging local/queued instead of full-list scanning every time.
 - Cache automation paths for a few ticks and recompute only when needed.
 - Cache static canvas layers or reduce expensive shadow/text drawing.
-
