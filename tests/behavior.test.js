@@ -56,13 +56,14 @@ function element(id) {
 
 function makeContext() {
   const elements = new Map();
+  const timeouts = [];
   const context = {
     console,
     Math,
     Date,
     Promise,
     parseInt,
-    setTimeout() { return 1; },
+    setTimeout(fn) { timeouts.push(fn); return timeouts.length; },
     clearTimeout() {},
     setInterval() { return 1; },
     clearInterval() {},
@@ -92,6 +93,10 @@ function makeContext() {
   vm.createContext(context);
   vm.runInContext(match[1], context, { filename: htmlPath });
   vm.runInContext('initGame(); clearTimeout(tickTimer); if (specialFoodTimer) clearInterval(specialFoodTimer);', context);
+  context.__runTimeouts = () => {
+    const pending = timeouts.splice(0);
+    for (const fn of pending) if (typeof fn === 'function') fn();
+  };
   return context;
 }
 
@@ -320,6 +325,27 @@ assert.equal(upgradeTriggerWithSpeedSlider.foodEaten, 5, 'speed slider must not 
 assert.equal(upgradeTriggerWithSpeedSlider.upgradeProgress, 6, 'speed-adjusted points should advance upgrade progress');
 assert.equal(upgradeTriggerWithSpeedSlider.paused, true, 'hitting the speed-adjusted upgrade threshold should pause for the upgrade screen');
 assert.equal(upgradeTriggerWithSpeedSlider.upgradeCount, 1, 'hitting the speed-adjusted upgrade threshold should open an upgrade choice');
+
+const speedyDoesNotCancelCheatInvincible = runScenario(`
+setCheatInvincible(true);
+applyTimedInvincible(5000);
+__runTimeouts();
+__testResult = { invincible, cheatInvincible, timedInvincible };
+`);
+
+assert.equal(speedyDoesNotCancelCheatInvincible.cheatInvincible, true, 'cheat invincible should remain enabled');
+assert.equal(speedyDoesNotCancelCheatInvincible.timedInvincible, false, 'timed invincible should expire');
+assert.equal(speedyDoesNotCancelCheatInvincible.invincible, true, 'expiring timed invincible must not cancel cheat invincible');
+
+const mobileKonami = runScenario(`
+const inputs = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyA','KeyB','KeyA','KeyB'];
+for (const c of inputs) handleKonamiInput(c);
+__testResult = { invincible, cheatInvincible, usedInvincibleThisRun };
+`);
+
+assert.equal(mobileKonami.invincible, true, 'mobile controls should be able to toggle invincible through Konami');
+assert.equal(mobileKonami.cheatInvincible, true, 'Konami should enable cheat invincible state');
+assert.equal(mobileKonami.usedInvincibleThisRun, true, 'Konami should count toward the achievement on mobile');
 
 const multiFood = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];

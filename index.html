@@ -143,6 +143,9 @@
   .dpad-btn{aspect-ratio:1;border:1px solid rgba(255,255,255,0.12);border-radius:14px;background:var(--surface);backdrop-filter:blur(8px);color:var(--text);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.1s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   .dpad-btn:active{background:rgba(0,255,136,0.15);border-color:var(--accent);box-shadow:0 0 16px rgba(0,255,136,0.2)}
   .dpad-up{grid-area:up}.dpad-left{grid-area:left}.dpad-right{grid-area:right}.dpad-down{grid-area:down}
+  .mobile-ab{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .ab-btn{height:44px;border-radius:14px;border:1px solid rgba(255,215,64,0.18);background:rgba(255,215,64,0.07);color:var(--gold);font-size:18px;font-weight:900;letter-spacing:2px;cursor:pointer;touch-action:manipulation}
+  .ab-btn:active{background:rgba(255,215,64,0.15);border-color:var(--gold);box-shadow:0 0 18px rgba(255,215,64,0.25)}
   .pause-btn-mobile{width:100%;margin-top:10px;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;letter-spacing:2px;cursor:pointer;text-align:center}
   .key-hint{font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:1px;text-align:center}
   @media(max-width:600px){.key-hint{display:none}.canvas-container{border-radius:12px}canvas{width:100%;height:auto}}
@@ -243,6 +246,10 @@
         <button class="dpad-btn dpad-right" id="dpadRight">▶</button>
         <button class="dpad-btn dpad-down" id="dpadDown">▼</button>
       </div>
+      <div class="mobile-ab">
+        <button class="ab-btn" id="btnA">A</button>
+        <button class="ab-btn" id="btnB">B</button>
+      </div>
       <div class="pause-btn-mobile" id="dpadPause">⏯ 暂停</div>
     </div>
     <div class="key-hint">↑↓←→ / WASD 移动 | 空格 暂停</div>
@@ -306,6 +313,7 @@ function sfxAchievement(){beep(800,0.08,'triangle',0.1);beep(1200,0.1,'sine',0.1
 const KONAMI=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','KeyA','KeyB','KeyA','KeyB'];
 let konamiIdx=0;
 function checkKonami(c){if(c===KONAMI[konamiIdx]){konamiIdx++;if(konamiIdx===KONAMI.length){konamiIdx=0;return true}}else{konamiIdx=c===KONAMI[0]?1:0}return false}
+function handleKonamiInput(c){if(checkKonami(c)){toggleInvincible();return true}return false}
 
 // ============================================================
 // ACHIEVEMENTS
@@ -405,6 +413,7 @@ let mergeThreshold=4; // how many same-level segments to merge (lowered by merge
 const BODY_LEVEL_CAP=16;
 const FOOD_MERGE_COUNT=4;
 let critChance=0,splitChance=0,goldenTouch=0,ghostTail=0;
+let cheatInvincible=false,timedInvincible=false;
 let runStartTime=0,tailGrowTimer=0,maxShieldBonus=0,timeWarpTimer=0,timeWarpUntil=0,safeZoneUntil=0,revengeUntil=0;
 // Automation / idle mode (triggers at level 10)
 let autoMode=false,autoSpeedDivider=4,autoCollectRange=1,autoFoodBonus=0;
@@ -497,7 +506,7 @@ function compressBody(){
 function initGame(){
   const mid=Math.floor(GRID/2);
   snake=[{x:mid,y:mid,lvl:1},{x:mid-1,y:mid,lvl:1},{x:mid-2,y:mid,lvl:1}];
-  direction='right';nextDirection='right';score=0;level=1;gameOver=false;paused=false;invincible=false;
+  direction='right';nextDirection='right';score=0;level=1;gameOver=false;paused=false;invincible=false;cheatInvincible=false;timedInvincible=false;
   inputLocked=false;scoreSubmitted=false;shieldCount=0;usedInvincibleThisRun=false;
   foodEaten=0;upgradeProgress=0;upgradeCount=0;nextUpgradeAt=UPGRADE_EVERY;
   bodyCompress=false;noSelfCollide=false;wrapMode=false;
@@ -513,7 +522,7 @@ function initGame(){
   foods=[];
   highScore=loadHighScore();
   spawnFood();updateUI();hideOverlays();
-  const cc=$('canvasContainer');cc.classList.remove('invincible');$('invBadge').classList.remove('active');
+  refreshInvincibleState();
   $('upgradeOverlay').classList.remove('active');
   if(tickTimer)clearTimeout(tickTimer);if(specialFoodTimer)clearInterval(specialFoodTimer);
   tickTimer=setTimeout(gameTick,getTickDelay());scheduleSpecialFood();
@@ -740,7 +749,7 @@ function showUpgradeScreen(){
       rebuildBodyFromLevels(bodyLevelsFromPoints(currentBodyPoints));
     }
     if(pickedFree==='lucky'){window._luckyNext=true}
-    if(pickedFree==='speedy'){invincible=true;setTimeout(()=>{invincible=false},5000)}
+    if(pickedFree==='speedy')applyTimedInvincible(5000);
     if(pickedFree==='gold_rush'){specialChanceBonus+=0.3;scheduleSpecialFood()}
     bodyPoints=totalBodyPoints();
 
@@ -1076,7 +1085,21 @@ function togglePause(){
   if(paused){$('pauseOverlay').classList.add('active')}
   else{$('pauseOverlay').classList.remove('active');tickTimer=setTimeout(gameTick,getTickDelay())}
 }
-function toggleInvincible(){invincible=!invincible;usedInvincibleThisRun=true;const cc=$('canvasContainer');if(invincible){cc.classList.add('invincible');$('invBadge').classList.add('active');sfxInvincible()}else{cc.classList.remove('invincible');$('invBadge').classList.remove('active')}}
+function refreshInvincibleState(){
+  invincible=cheatInvincible||timedInvincible;
+  const cc=$('canvasContainer');
+  if(invincible){cc.classList.add('invincible');$('invBadge').classList.add('active')}
+  else{cc.classList.remove('invincible');$('invBadge').classList.remove('active')}
+}
+function setCheatInvincible(on){
+  cheatInvincible=!!on;usedInvincibleThisRun=usedInvincibleThisRun||cheatInvincible;refreshInvincibleState();
+  if(cheatInvincible)sfxInvincible();
+}
+function applyTimedInvincible(ms){
+  timedInvincible=true;refreshInvincibleState();
+  setTimeout(()=>{timedInvincible=false;refreshInvincibleState()},ms);
+}
+function toggleInvincible(){setCheatInvincible(!cheatInvincible)}
 function isValidDirection(dir){const o={up:'down',down:'up',left:'right',right:'left'};return dir!==o[direction]}
 function changeDirection(dir){if(inputLocked)return;if(!isValidDirection(dir))return;nextDirection=dir;inputLocked=true}
 
@@ -1217,7 +1240,7 @@ function showScreen(id){
 // INPUT
 // ============================================================
 const KEY_MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'};
-document.addEventListener('keydown',e=>{initAudio();const c=e.code;if(checkKonami(c)){toggleInvincible();e.preventDefault();return}if(c in KEY_MAP){e.preventDefault();if(gameOver||paused||autoMode)return;changeDirection(KEY_MAP[c]);return}if(c==='Space'){e.preventDefault();togglePause();return}});
+document.addEventListener('keydown',e=>{initAudio();const c=e.code;if(handleKonamiInput(c)){e.preventDefault();return}if(c in KEY_MAP){e.preventDefault();if(gameOver||paused||autoMode)return;changeDirection(KEY_MAP[c]);return}if(c==='Space'){e.preventDefault();togglePause();return}});
 try{const s=localStorage.getItem('snake_nickname');if(s)$('playerName').value=s}catch(e){}
 $('playerName').addEventListener('input',()=>{try{localStorage.setItem('snake_nickname',$('playerName').value.trim())}catch(e){}});
 setPlayerSpeed(loadPlayerSpeed());
@@ -1300,8 +1323,11 @@ for(const[id,count]of Object.entries(autoShopPurchases)){
   }
 }
 
-function setupDpad(id,dir){const el=$(id);if(!el)return;el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(gameOver||paused||autoMode)return;changeDirection(dir)})}
+const DPAD_KONAMI={up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'};
+function setupDpad(id,dir){const el=$(id);if(!el)return;el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();if(handleKonamiInput(DPAD_KONAMI[dir]))return;if(gameOver||paused||autoMode)return;changeDirection(dir)})}
 setupDpad('dpadUp','up');setupDpad('dpadDown','down');setupDpad('dpadLeft','left');setupDpad('dpadRight','right');
+function setupKonamiButton(id,code){const el=$(id);if(!el)return;el.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();handleKonamiInput(code)})}
+setupKonamiButton('btnA','KeyA');setupKonamiButton('btnB','KeyB');
 const dp=$('dpadPause');if(dp)dp.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();togglePause()});
 let tsx=0,tsy=0;const gc=$('gameCanvas');
 gc.addEventListener('touchstart',e=>{initAudio();tsx=e.touches[0].clientX;tsy=e.touches[0].clientY},{passive:true});
