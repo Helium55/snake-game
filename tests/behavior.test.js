@@ -298,6 +298,29 @@ __testResult = { score, foodEaten };
 assert.equal(playerSpeedScore.score, 1.2, '1.2x player speed should award 1.2x points');
 assert.equal(playerSpeedScore.foodEaten, 1, 'speed multiplier should not change food progress');
 
+const upgradeTriggerWithSpeedSlider = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+food = {x:6,y:5};
+foods = [food];
+specialFood = null;
+direction = 'right';
+nextDirection = 'right';
+playerSpeedMult = 1.2;
+foodEaten = 4;
+upgradeProgress = 4.8;
+nextUpgradeAt = 5;
+paused = false;
+gameOver = false;
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { foodEaten, upgradeProgress, paused, upgradeCount };
+`);
+
+assert.equal(upgradeTriggerWithSpeedSlider.foodEaten, 5, 'speed slider must not block food progress');
+assert.equal(upgradeTriggerWithSpeedSlider.upgradeProgress, 6, 'speed-adjusted points should advance upgrade progress');
+assert.equal(upgradeTriggerWithSpeedSlider.paused, true, 'hitting the speed-adjusted upgrade threshold should pause for the upgrade screen');
+assert.equal(upgradeTriggerWithSpeedSlider.upgradeCount, 1, 'hitting the speed-adjusted upgrade threshold should open an upgrade choice');
+
 const multiFood = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
 food = {x:6,y:5};

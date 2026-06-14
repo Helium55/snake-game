@@ -394,7 +394,7 @@ const SHOP_UPGRADES=[
 // ============================================================
 let snake,food,foods,specialFood,direction,nextDirection,score,highScore,level,gameOver,paused,invincible;
 let tickTimer,specialFoodTimer,phaseTimer;
-let foodEaten=0,upgradeCount=0,nextUpgradeAt=UPGRADE_EVERY;
+let foodEaten=0,upgradeProgress=0,upgradeCount=0,nextUpgradeAt=UPGRADE_EVERY;
 let inputLocked=false,scoreSubmitted=false,shieldCount=0,usedInvincibleThisRun=false;
 let bodyCompress=false,noSelfCollide=false,wrapMode=false;
 let activeFree=[],activeShop=[];
@@ -499,7 +499,7 @@ function initGame(){
   snake=[{x:mid,y:mid,lvl:1},{x:mid-1,y:mid,lvl:1},{x:mid-2,y:mid,lvl:1}];
   direction='right';nextDirection='right';score=0;level=1;gameOver=false;paused=false;invincible=false;
   inputLocked=false;scoreSubmitted=false;shieldCount=0;usedInvincibleThisRun=false;
-  foodEaten=0;upgradeCount=0;nextUpgradeAt=UPGRADE_EVERY;
+  foodEaten=0;upgradeProgress=0;upgradeCount=0;nextUpgradeAt=UPGRADE_EVERY;
   bodyCompress=false;noSelfCollide=false;wrapMode=false;
   activeFree=[];activeShop=[];
   growExtra=0;scoreMult=1;specialChanceBonus=0;dodgeChance=0;shopPurchaseCount=0;
@@ -950,7 +950,7 @@ function gameTick(){
     let pts=value*scoreMultiplier();
     if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
-    score+=pts;foodEaten+=value;
+    score+=pts;foodEaten+=value;upgradeProgress+=value*playerSpeedMult;
     const extraGrow=value+growExtra;
     for(let i=0;i<extraGrow-1;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
     // Auto food bonus: extra body points
@@ -968,7 +968,7 @@ function gameTick(){
     let pts=bonus*scoreMultiplier();
     if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
-    score+=pts;foodEaten++;achStats.totalSpecial++;
+    score+=pts;foodEaten++;upgradeProgress+=playerSpeedMult;achStats.totalSpecial++;
     const extraGrow=bonus+growExtra;
     for(let i=0;i<extraGrow;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
     if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
@@ -1003,12 +1003,12 @@ function gameTick(){
   bodyPoints=totalBodyPoints();
   if(ghostTail>0){/* ghost tail: last N segments don't collide, handled in self-collision check */}
 
-  level=Math.floor(foodEaten/5)+1;
+  level=Math.floor(upgradeProgress/5)+1;
   updateUI();draw();
 
   // Check upgrade trigger (skip in auto mode)
-  if(!autoMode&&foodEaten>=nextUpgradeAt){
-    nextUpgradeAt=foodEaten+UPGRADE_EVERY;
+  if(!autoMode&&upgradeProgress>=nextUpgradeAt){
+    nextUpgradeAt=upgradeProgress+UPGRADE_EVERY;
     showUpgradeScreen();
     return;
   }
@@ -1062,7 +1062,7 @@ function updateUI(){
   if(autoMode){
     $('nextUpgrade').textContent=`🤖 自动化中 | 点数:${totalBodyPoints()}`;
   }else{
-    $('nextUpgrade').textContent=`下次升级: ${nextUpgradeAt-foodEaten}🍎`;
+    $('nextUpgrade').textContent=`下次升级: ${Math.max(0,Math.ceil(nextUpgradeAt-upgradeProgress))}🍎`;
   }
 }
 function hideOverlays(){
