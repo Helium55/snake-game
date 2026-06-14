@@ -264,6 +264,40 @@ __testResult = { afterFirst, afterSecond: autoSpeedDivider };
 assert.equal(autoSpeedUpgrade.afterFirst, 3.2, 'auto speed +25% should reduce the tick divider by 1/1.25');
 assert.equal(autoSpeedUpgrade.afterSecond, 2.56, 'auto speed upgrades should stack multiplicatively');
 
+const playerSpeedMultiplier = runScenario(`
+level = 1;
+activeFree = [];
+timeWarpUntil = 0;
+runStartTime = Date.now() - 60000;
+playerSpeedMult = 1.2;
+autoMode = true;
+__testResult = {
+  normal: getSpeed(),
+  auto: getTickDelay()
+};
+`);
+
+assert.equal(playerSpeedMultiplier.normal, (130 - 8) / 1.2, 'player speed multiplier should shorten manual tick delay');
+assert.equal(playerSpeedMultiplier.auto, 130 * 4 / 1.2, 'player speed multiplier should also shorten auto tick delay');
+
+const playerSpeedScore = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+food = {x:6,y:5};
+foods = [food];
+specialFood = null;
+direction = 'right';
+nextDirection = 'right';
+playerSpeedMult = 1.2;
+paused = false;
+gameOver = false;
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { score, foodEaten };
+`);
+
+assert.equal(playerSpeedScore.score, 1.2, '1.2x player speed should award 1.2x points');
+assert.equal(playerSpeedScore.foodEaten, 1, 'speed multiplier should not change food progress');
+
 const multiFood = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
 food = {x:6,y:5};

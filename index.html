@@ -19,6 +19,10 @@
   .high-score-value{font-size:18px;font-weight:600;color:var(--gold);text-shadow:0 0 12px rgba(255,215,64,0.3)}
   .level-badge{font-size:11px;font-weight:700;color:var(--purple);padding:4px 10px;background:rgba(189,0,255,0.12);border-radius:20px;border:1px solid rgba(189,0,255,0.2)}
   .next-upgrade{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;text-align:center}
+  .speed-control{display:flex;align-items:center;gap:10px;width:100%;padding:8px 14px;background:var(--surface);backdrop-filter:blur(10px);border-radius:14px;border:1px solid rgba(255,255,255,0.08)}
+  .speed-label{font-size:11px;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,0.45);white-space:nowrap}
+  .speed-slider{flex:1;min-width:0;accent-color:var(--accent)}
+  .speed-value{font-size:12px;font-weight:800;color:var(--accent);min-width:86px;text-align:right;text-shadow:0 0 12px rgba(0,255,136,0.35)}
 
   .name-row{display:flex;align-items:center;gap:8px;width:100%}
   .name-input{flex:1;padding:8px 14px;font-size:14px;background:var(--surface);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:var(--text);outline:none}
@@ -182,6 +186,12 @@
         <span class="high-score-label">最高分</span>
         <span class="high-score-value" id="highScore">0</span>
       </div>
+    </div>
+
+    <div class="speed-control">
+      <span class="speed-label">速度</span>
+      <input class="speed-slider" id="speedSlider" type="range" min="0.5" max="2" step="0.1" value="1">
+      <span class="speed-value" id="speedValue">1.0x 分数</span>
     </div>
 
     <div class="canvas-container" id="canvasContainer">
@@ -389,6 +399,7 @@ let inputLocked=false,scoreSubmitted=false,shieldCount=0,usedInvincibleThisRun=f
 let bodyCompress=false,noSelfCollide=false,wrapMode=false;
 let activeFree=[],activeShop=[];
 let growExtra=0,scoreMult=1,specialChanceBonus=0,dodgeChance=0,shopPurchaseCount=0;
+let playerSpeedMult=1;
 let bodyPoints=3; // body economy for shop & compression
 let mergeThreshold=4; // how many same-level segments to merge (lowered by merge_boost)
 const BODY_LEVEL_CAP=16;
@@ -427,6 +438,14 @@ function applyBg(bg){
 
 function loadHighScore(){try{return parseInt(localStorage.getItem('snake_highscore')||'0')}catch(e){return 0}}
 function saveHighScore(v){try{localStorage.setItem('snake_highscore',v)}catch(e){}}
+function loadPlayerSpeed(){try{return parseFloat(localStorage.getItem('snake_player_speed')||'1')||1}catch(e){return 1}}
+function savePlayerSpeed(v){try{localStorage.setItem('snake_player_speed',String(v))}catch(e){}}
+function setPlayerSpeed(v){
+  playerSpeedMult=Math.max(0.5,Math.min(2,parseFloat(v)||1));
+  if($('speedSlider'))$('speedSlider').value=playerSpeedMult.toFixed(1);
+  if($('speedValue'))$('speedValue').textContent=`${playerSpeedMult.toFixed(1)}x 分数`;
+  savePlayerSpeed(playerSpeedMult);
+}
 
 function randomCell(){return{x:Math.floor(Math.random()*GRID),y:Math.floor(Math.random()*GRID)}}
 
@@ -436,7 +455,13 @@ function getSpeed(){
   s*=(1-boost*0.15);
   if(activeFree.some(c=>c.id==='slow_start')&&Date.now()-runStartTime<30000)s*=2;
   if(Date.now()<timeWarpUntil)s*=1.8;
-  return Math.max(MIN_SPEED,s);
+  return Math.max(MIN_SPEED,s/playerSpeedMult);
+}
+function getTickDelay(){
+  return autoMode?Math.max(MIN_SPEED,BASE_SPEED*autoSpeedDivider/playerSpeedMult):getSpeed();
+}
+function scoreMultiplier(){
+  return scoreMult*playerSpeedMult;
 }
 
 function totalBodyPoints(){
@@ -491,7 +516,7 @@ function initGame(){
   const cc=$('canvasContainer');cc.classList.remove('invincible');$('invBadge').classList.remove('active');
   $('upgradeOverlay').classList.remove('active');
   if(tickTimer)clearTimeout(tickTimer);if(specialFoodTimer)clearInterval(specialFoodTimer);
-  tickTimer=setTimeout(gameTick,getSpeed());scheduleSpecialFood();
+  tickTimer=setTimeout(gameTick,getTickDelay());scheduleSpecialFood();
 }
 
 function scheduleSpecialFood(){
@@ -694,7 +719,7 @@ function showUpgradeScreen(){
       $('autoShopBtn').style.display='';
       for(let i=0;i<autoFoodSpawn;i++)spawnFood();
       paused=false;
-      tickTimer=setTimeout(gameTick,BASE_SPEED*autoSpeedDivider);
+      tickTimer=setTimeout(gameTick,getTickDelay());
       updateUI();draw();
       return;
     }
@@ -724,7 +749,7 @@ function showUpgradeScreen(){
     draw();updateUI();
     setTimeout(()=>{
       paused=false;
-      tickTimer=setTimeout(gameTick,getSpeed());
+      tickTimer=setTimeout(gameTick,getTickDelay());
       checkAchievements(achStats);
     },1000);
   });
@@ -922,7 +947,7 @@ function gameTick(){
   if(willEatRegular){
     const eatenFood=foods[eatenFoodIndex];
     const value=foodValue(eatenFood);
-    let pts=value*scoreMult;
+    let pts=value*scoreMultiplier();
     if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
     score+=pts;foodEaten+=value;
@@ -940,7 +965,7 @@ function gameTick(){
     mergeFoods();
   }else if(willEatSpecial){
     const bonus=activeShop.some(c=>c.id==='double_special')?4:2;
-    let pts=bonus*scoreMult;
+    let pts=bonus*scoreMultiplier();
     if(Date.now()<revengeUntil)pts*=3;
     if(Math.random()<critChance)pts*=2;
     score+=pts;foodEaten++;achStats.totalSpecial++;
@@ -989,8 +1014,7 @@ function gameTick(){
   }
 
   if(!gameOver&&!paused){
-    const spd=autoMode?BASE_SPEED*autoSpeedDivider:getSpeed();
-    tickTimer=setTimeout(gameTick,spd);
+    tickTimer=setTimeout(gameTick,getTickDelay());
   }
 }
 
@@ -1034,6 +1058,7 @@ function endGame(){
 function updateUI(){
   $('score').textContent=score;$('highScore').textContent=highScore;
   $('levelBadge').textContent=`Lv.${level}`;
+  if($('speedValue'))$('speedValue').textContent=`${playerSpeedMult.toFixed(1)}x 分数`;
   if(autoMode){
     $('nextUpgrade').textContent=`🤖 自动化中 | 点数:${totalBodyPoints()}`;
   }else{
@@ -1049,7 +1074,7 @@ function hideOverlays(){
 function togglePause(){
   if(gameOver)return;paused=!paused;
   if(paused){$('pauseOverlay').classList.add('active')}
-  else{$('pauseOverlay').classList.remove('active');tickTimer=setTimeout(gameTick,getSpeed())}
+  else{$('pauseOverlay').classList.remove('active');tickTimer=setTimeout(gameTick,getTickDelay())}
 }
 function toggleInvincible(){invincible=!invincible;usedInvincibleThisRun=true;const cc=$('canvasContainer');if(invincible){cc.classList.add('invincible');$('invBadge').classList.add('active');sfxInvincible()}else{cc.classList.remove('invincible');$('invBadge').classList.remove('active')}}
 function isValidDirection(dir){const o={up:'down',down:'up',left:'right',right:'left'};return dir!==o[direction]}
@@ -1195,6 +1220,14 @@ const KEY_MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'
 document.addEventListener('keydown',e=>{initAudio();const c=e.code;if(checkKonami(c)){toggleInvincible();e.preventDefault();return}if(c in KEY_MAP){e.preventDefault();if(gameOver||paused||autoMode)return;changeDirection(KEY_MAP[c]);return}if(c==='Space'){e.preventDefault();togglePause();return}});
 try{const s=localStorage.getItem('snake_nickname');if(s)$('playerName').value=s}catch(e){}
 $('playerName').addEventListener('input',()=>{try{localStorage.setItem('snake_nickname',$('playerName').value.trim())}catch(e){}});
+setPlayerSpeed(loadPlayerSpeed());
+$('speedSlider').addEventListener('input',e=>{
+  setPlayerSpeed(e.target.value);
+  if(tickTimer&&!paused&&!gameOver){
+    clearTimeout(tickTimer);
+    tickTimer=setTimeout(gameTick,getTickDelay());
+  }
+});
 $('btnPlay').addEventListener('click',()=>{initAudio();showScreen('gameScreen');initGame();draw()});
 $('btnAchievements').addEventListener('click',()=>showScreen('achScreen'));
 $('btnLBFromMenu').addEventListener('click',()=>{initAudio();openLeaderboard()});
