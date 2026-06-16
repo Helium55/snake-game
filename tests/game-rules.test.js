@@ -29,8 +29,29 @@ assert(
   source.includes('id="btnStyle"') &&
   source.includes('id="stylePanel"') &&
   source.includes('data-style="default"') &&
-  source.includes('data-style="synthwave"'),
-  'main menu should expose default and synthwave visual style choices'
+  source.includes('data-style="synthwave"') &&
+  source.includes('data-style="acid"'),
+  'main menu should expose default, synthwave, and acid visual style choices'
+);
+
+assert(
+  source.includes('.style-acid') &&
+  source.includes('@keyframes acid-drift') &&
+  source.includes('@keyframes acid-pulse') &&
+  source.includes('酸性艺术'),
+  'acid art style should include its own UI palette, animated background, and menu label'
+);
+
+assert(
+  /document\.body\.classList\.remove\('style-default','style-synthwave','style-acid'\)/.test(source) &&
+  /currentVisualStyle=style==='synthwave'\?'synthwave':style==='acid'\?'acid':'default'/.test(source) &&
+  /currentVisualStyle==='acid'\?'酸性艺术'/.test(source),
+  'visual style switching should preserve acid as a first-class selectable style'
+);
+
+assert(
+  /canvasBaseBackground\(\)\{return currentVisualStyle==='synthwave'\?'rgba\(7,0,18,0\.58\)':currentVisualStyle==='acid'\?'rgba\(10,16,0,0\.68\)'/.test(source),
+  'acid art style should use a matching translucent canvas background'
 );
 
 assert(

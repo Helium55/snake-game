@@ -2,6 +2,12 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.6] - 2026-06-16
+
+### Added
+
+- Added an acid art visual style option with neon checker patterns, halftone noise, warped color layers, matching UI shadows, and a translucent acid canvas background.
+
 ## [0.2.5] - 2026-06-16
 
 ### Changed

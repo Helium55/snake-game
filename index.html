@@ -20,6 +20,18 @@
   body.style-synthwave .canvas-container{border-color:rgba(0,238,255,0.5);background:rgba(7,0,18,0.28);backdrop-filter:blur(6px);box-shadow:0 0 28px rgba(0,238,255,0.24),0 0 70px rgba(255,49,214,0.18),0 30px 80px rgba(0,0,0,0.58)}
   body.style-synthwave .btn-restart,body.style-synthwave .menu-btn.primary{background:linear-gradient(90deg,rgba(255,49,214,0.24),rgba(0,238,255,0.2));border-color:rgba(0,238,255,0.44);color:#00eeff}
   body.style-synthwave .btn-menu{background:#ff31d6;color:#090014}
+  body.style-acid{--bg:#101400;--surface:rgba(12,18,0,0.82);--text:#f8ffe7;--accent:#d7ff00;--gold:#ffee32;--danger:#ff2f7d;--purple:#00f5ff;background:#101400;background-image:linear-gradient(135deg,rgba(215,255,0,0.16),transparent 34%),linear-gradient(315deg,rgba(255,0,168,0.18),transparent 42%),linear-gradient(180deg,#121900 0%,#071100 55%,#050806 100%)}
+  body.style-acid::before{content:'';position:fixed;inset:-18%;z-index:-2;background:repeating-conic-gradient(from 45deg,rgba(215,255,0,0.32) 0 25%,transparent 0 50%) 0 0/46px 46px,repeating-linear-gradient(115deg,transparent 0 18px,rgba(0,245,255,0.16) 18px 21px,transparent 21px 44px);transform:rotate(-8deg) skewX(-8deg);opacity:0.44;animation:acid-drift 7s linear infinite}
+  body.style-acid::after{content:'';position:fixed;left:-18%;right:-18%;bottom:-10vh;height:52vh;z-index:-1;background:radial-gradient(circle at 18px 18px,rgba(255,0,168,0.58) 0 3px,transparent 4px) 0 0/36px 36px,linear-gradient(90deg,rgba(215,255,0,0.22),rgba(0,245,255,0.18),rgba(255,0,168,0.22));clip-path:polygon(0 22%,12% 15%,25% 27%,38% 13%,52% 24%,68% 10%,82% 25%,100% 14%,100% 100%,0 100%);opacity:0.72;animation:acid-pulse 3.4s ease-in-out infinite}
+  @keyframes acid-drift{from{background-position:0 0,0 0}to{background-position:92px 46px,88px 0}}
+  @keyframes acid-pulse{0%,100%{filter:hue-rotate(0deg) saturate(1);transform:translateY(0)}50%{filter:hue-rotate(18deg) saturate(1.35);transform:translateY(8px)}}
+  body.style-acid .screen,body.style-acid .toast-container,body.style-acid .lb-modal{position:relative;z-index:1}
+  body.style-acid .header,body.style-acid .speed-control,body.style-acid .name-input,body.style-acid .menu-btn,body.style-acid .dpad-btn,body.style-acid .pause-btn-mobile{border-color:rgba(215,255,0,0.42);box-shadow:4px 4px 0 rgba(255,0,168,0.42),-3px -3px 0 rgba(0,245,255,0.28),inset 0 0 22px rgba(215,255,0,0.08)}
+  body.style-acid .menu-title{background:linear-gradient(90deg,#d7ff00,#ff00a8 48%,#00f5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:3px 3px 0 rgba(255,0,168,0.45),-2px -2px 0 rgba(0,245,255,0.36)}
+  body.style-acid .menu-subtitle{color:#d7ff00;text-shadow:2px 2px 0 rgba(255,0,168,0.5)}
+  body.style-acid .canvas-container{border-color:rgba(215,255,0,0.62);background:rgba(10,16,0,0.28);backdrop-filter:blur(4px) contrast(1.2);box-shadow:6px 6px 0 rgba(255,0,168,0.34),-5px -5px 0 rgba(0,245,255,0.25),0 0 38px rgba(215,255,0,0.2)}
+  body.style-acid .btn-restart,body.style-acid .menu-btn.primary{background:linear-gradient(90deg,rgba(215,255,0,0.34),rgba(255,0,168,0.22));border-color:rgba(215,255,0,0.62);color:#efff62}
+  body.style-acid .btn-menu{background:#d7ff00;color:#101400}
   .game-wrapper{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:440px;width:100%}
 
   .header{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 16px;background:var(--surface);backdrop-filter:blur(12px);border-radius:16px;border:1px solid rgba(255,255,255,0.08)}
@@ -148,7 +160,7 @@
   .menu-stats{display:flex;gap:20px;margin:16px 0;font-size:13px;color:rgba(255,255,255,0.4)}
   .menu-stats span{color:var(--gold)}
   .style-panel{display:none;width:100%;max-width:340px;margin:8px 0 6px;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:16px;background:var(--surface);backdrop-filter:blur(10px);gap:8px}
-  .style-panel.active{display:grid;grid-template-columns:1fr 1fr}
+  .style-panel.active{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}
   .style-option{padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--text);cursor:pointer;text-align:left;transition:all 0.2s}
   .style-option.active{border-color:var(--accent);box-shadow:0 0 18px rgba(0,238,255,0.18);background:rgba(0,238,255,0.08)}
   .style-option-name{font-size:13px;font-weight:800;letter-spacing:1px}
@@ -192,6 +204,10 @@
       <button class="style-option" data-style="synthwave">
         <div class="style-option-name">合成器浪潮</div>
         <div class="style-option-desc">动态落日和底部透视网格</div>
+      </button>
+      <button class="style-option" data-style="acid">
+        <div class="style-option-name">酸性艺术</div>
+        <div class="style-option-desc">荧光错位、棋盘和半调噪点</div>
       </button>
     </div>
     <button class="menu-btn" id="btnAchievements">🏆 成就</button>
@@ -478,18 +494,18 @@ function loadHighScore(){try{return parseInt(localStorage.getItem('snake_highsco
 function saveHighScore(v){try{localStorage.setItem('snake_highscore',v)}catch(e){}}
 function loadVisualStyle(){try{return localStorage.getItem('snake_visual_style')||'default'}catch(e){return'default'}}
 function saveVisualStyle(v){try{localStorage.setItem('snake_visual_style',v)}catch(e){}}
-function canvasBaseBackground(){return currentVisualStyle==='synthwave'?'rgba(7,0,18,0.58)':'#080812'}
+function canvasBaseBackground(){return currentVisualStyle==='synthwave'?'rgba(7,0,18,0.58)':currentVisualStyle==='acid'?'rgba(10,16,0,0.68)':'#080812'}
 function setVisualStyle(style){
-  currentVisualStyle=style==='synthwave'?'synthwave':'default';
+  currentVisualStyle=style==='synthwave'?'synthwave':style==='acid'?'acid':'default';
   if(document.body&&document.body.classList){
-    document.body.classList.remove('style-default','style-synthwave');
+    document.body.classList.remove('style-default','style-synthwave','style-acid');
     document.body.classList.add(`style-${currentVisualStyle}`);
   }
   if(typeof document.querySelectorAll==='function'){
     document.querySelectorAll('.style-option').forEach(btn=>btn.classList.toggle('active',btn.dataset.style===currentVisualStyle));
   }
   const styleBtn=$('btnStyle');
-  if(styleBtn)styleBtn.textContent=`🎨 风格: ${currentVisualStyle==='synthwave'?'合成器浪潮':'默认霓虹'}`;
+  if(styleBtn)styleBtn.textContent=`🎨 风格: ${currentVisualStyle==='synthwave'?'合成器浪潮':currentVisualStyle==='acid'?'酸性艺术':'默认霓虹'}`;
   const canvas=$('gameCanvas');
   if(canvas)canvas.style.background=canvasBaseBackground();
   saveVisualStyle(currentVisualStyle);
