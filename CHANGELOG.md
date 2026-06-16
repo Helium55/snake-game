@@ -2,6 +2,17 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.3] - 2026-06-16
+
+### Changed
+
+- Enlarged the synthwave perspective grid so it occupies more of the lower viewport.
+- Added left and right perspective building layers with neon window detail.
+
+### Fixed
+
+- Removed the looping sun scanline animation that made the top sunset band appear to jump.
+
 ## [0.2.2] - 2026-06-16
 
 ### Added

@@ -35,9 +35,9 @@ assert(
 
 assert(
   source.includes('.style-synthwave') &&
-  source.includes('@keyframes synth-sun-scan') &&
+  source.includes('mask-image:repeating-linear-gradient') &&
   source.includes('@keyframes synth-grid-drift'),
-  'synthwave style should include scanline sun and moving horizon-grid styling'
+  'synthwave style should include a scanline sun and moving horizon-grid styling'
 );
 
 assert(
@@ -45,6 +45,26 @@ assert(
   source.includes('.synth-city::before') &&
   source.includes('.synth-city::after'),
   'synthwave style should include a fixed skyline layer with buildings and a horizon glow'
+);
+
+assert(
+  /body\.style-synthwave::before\{[^}]*mask-image:repeating-linear-gradient/.test(source) &&
+  !/body\.style-synthwave::before\{[^}]*animation:synth-sun-scan/.test(source),
+  'synthwave sun should keep static scanline cuts so the top band does not jump on loop'
+);
+
+assert(
+  /body\.style-synthwave::after\{[^}]*height:58vh/.test(source) &&
+  /body\.style-synthwave::after\{[^}]*perspective\(340px\)/.test(source),
+  'synthwave horizon grid should occupy more of the lower viewport with a deeper perspective'
+);
+
+assert(
+  source.includes('class="synth-building synth-building-left"') &&
+  source.includes('class="synth-building synth-building-right"') &&
+  source.includes('.synth-building span') &&
+  source.includes('skewY('),
+  'synthwave buildings should add neon window detail and left/right perspective layers'
 );
 
 assert(
