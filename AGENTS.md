@@ -121,6 +121,9 @@ For a stronger rollback to a specific tag, create a new revert commit that resto
 - `default`, `synthwave`, and `acid` must share component geometry and interaction behavior.
 - Keep `--surface-strong`, `--line-strong`, `--success`, `--warning`, and `--special` CSS token markers.
 - Canvas visuals should keep distinct helpers for food chips, merged food, special food, normal snake segments, and compressed snake segments.
+- Snake, compressed snake body, normal food, merged food, and special food use square modules, not rounded rectangles or circles.
+- Snake body modules should render with no intentional gap between adjacent body cells.
+- Keep `SQUARE_MODULE_PAD=0`, `squareCellRect`, and square drawing helper markers for source tests.
 - Score/eating/upgrade feedback must stay bounded and lightweight to avoid late-game slowdown.
 
 ## Performance Cache Notes

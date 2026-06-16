@@ -204,6 +204,7 @@
     --radius:8px;
   }
   body{
+    --object-shape:square-module;
     padding:12px;
     color:var(--text);
     background:
@@ -334,7 +335,7 @@
   .style-swatch{
     width:28px;
     height:28px;
-    border-radius:7px;
+    border-radius:0;
     border:1px solid rgba(255,255,255,.18);
     box-shadow:inset 0 0 0 1px rgba(0,0,0,.2);
   }
@@ -1621,8 +1622,33 @@ function pulseScore(){
   void el.offsetWidth;
   el.classList.add('score-pop-ready');
 }
+const SQUARE_MODULE_PAD=0;
+function squareCellRect(gx,gy,pad=SQUARE_MODULE_PAD){
+  return{x:gx*CELL+pad,y:gy*CELL+pad,w:CELL-pad*2,h:CELL-pad*2};
+}
 function cellRect(gx,gy,pad=3){
   return{x:gx*CELL+pad,y:gy*CELL+pad,w:CELL-pad*2,h:CELL-pad*2};
+}
+function drawSquareModule(ctx,r,fill,stroke='rgba(255,255,255,.22)',detail=''){
+  ctx.save();
+  ctx.fillStyle=fill;
+  ctx.fillRect(r.x,r.y,r.w,r.h);
+  ctx.strokeStyle=stroke;
+  ctx.lineWidth=1;
+  ctx.strokeRect(r.x+.5,r.y+.5,r.w-1,r.h-1);
+  if(detail==='chip'){
+    ctx.fillStyle='rgba(255,255,255,.45)';
+    ctx.fillRect(r.x+r.w*.34,r.y+3,r.w*.32,2);
+    ctx.fillStyle='rgba(0,0,0,.22)';
+    ctx.fillRect(r.x+3,r.y+r.h-5,r.w-6,2);
+  }
+  if(detail==='scan'){
+    ctx.fillStyle='rgba(255,255,255,.62)';
+    ctx.fillRect(r.x+r.w*.42,r.y+2,r.w*.16,r.h-4);
+    ctx.fillStyle='rgba(255,255,255,.24)';
+    ctx.fillRect(r.x+2,r.y+r.h*.42,r.w-4,r.h*.16);
+  }
+  ctx.restore();
 }
 function roundedRectPath(c,x,y,w,h,r){
   c.beginPath();
@@ -1638,31 +1664,22 @@ function roundedRectPath(c,x,y,w,h,r){
   c.closePath();
 }
 function drawFoodChip(f){
+  drawSquareFoodModule(f);
+}
+function drawSquareFoodModule(f){
   const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
-  const lvl=f.lvl||1,r=cellRect(f.x,f.y,4);
-  const pulse=0.86+Math.sin(Date.now()/180+f.x+f.y)*0.08;
-  ctx.save();
-  ctx.globalAlpha=.92;
-  roundedRectPath(ctx,r.x,r.y,r.w,r.h,5);
-  ctx.fillStyle=lvl>1?'#f5b85a':'#ef6b73';
-  ctx.shadowColor=lvl>1?'rgba(245,184,90,.28)':'rgba(239,107,115,.28)';
-  ctx.shadowBlur=10;
-  ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.strokeStyle='rgba(255,255,255,.28)';
-  ctx.stroke();
-  ctx.globalAlpha=.55*pulse;
-  ctx.fillStyle=lvl>1?'#fff0ba':'#ffd0d3';
-  ctx.fillRect(r.x+r.w*.34,r.y+3,r.w*.32,2);
-  ctx.restore();
+  const lvl=f.lvl||1,r=squareCellRect(f.x,f.y,3);
+  const fill=lvl>1?'#e6b15d':'#e66b73';
+  drawSquareModule(ctx,r,fill,'rgba(255,255,255,.28)','chip');
   if(lvl>1)drawMergedFoodCore(f);
 }
 function drawMergedFoodCore(f){
-  const canvas=$('gameCanvas'),ctx=canvas.getContext('2d'),r=cellRect(f.x,f.y,5);
+  const canvas=$('gameCanvas'),ctx=canvas.getContext('2d'),r=squareCellRect(f.x,f.y,5);
   ctx.save();
   ctx.fillStyle='rgba(7,11,16,.76)';
-  roundedRectPath(ctx,r.x+3,r.y+3,r.w-6,r.h-6,4);
-  ctx.fill();
+  ctx.fillRect(r.x+2,r.y+2,r.w-4,r.h-4);
+  ctx.strokeStyle='rgba(255,255,255,.18)';
+  ctx.strokeRect(r.x+2.5,r.y+2.5,r.w-5,r.h-5);
   ctx.fillStyle='#fff2bd';
   ctx.font='800 9px Segoe UI';
   ctx.textAlign='center';
@@ -1671,77 +1688,70 @@ function drawMergedFoodCore(f){
   ctx.restore();
 }
 function drawSpecialFoodCore(f){
+  drawSquareSpecialModule(f);
+}
+function drawSquareSpecialModule(f){
   const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
-  const cx=f.x*CELL+CELL/2,cy=f.y*CELL+CELL/2;
-  const age=Date.now()-f.spawnTime,pulse=0.9+0.12*Math.sin(age/150);
+  const r=squareCellRect(f.x,f.y,2);
+  const age=Date.now()-f.spawnTime;
   const alpha=age>6000?Math.max(0,1-(age-6000)/2000):1;
   ctx.save();
   ctx.globalAlpha=alpha;
-  ctx.beginPath();
-  ctx.arc(cx,cy,8*pulse,0,Math.PI*2);
-  ctx.fillStyle='#f5b85a';
-  ctx.shadowColor='rgba(245,184,90,.42)';
-  ctx.shadowBlur=14;
-  ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.lineWidth=2;
-  ctx.strokeStyle='rgba(167,139,250,.9)';
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx,cy,3,0,Math.PI*2);
-  ctx.fillStyle='#fff7d8';
-  ctx.fill();
+  drawSquareModule(ctx,r,'#e6b15d','rgba(157,145,255,.86)','scan');
+  ctx.strokeStyle='rgba(102,217,239,.55)';
+  ctx.strokeRect(r.x+4.5,r.y+4.5,r.w-9,r.h-9);
   ctx.restore();
 }
 function drawSnakeSegment(seg,index,isHead){
+  drawSquareSnakeModule(seg,index,isHead);
+}
+function drawSquareSnakeModule(seg,index,isHead){
   const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
-  const r=cellRect(seg.x,seg.y,isHead?2:3);
-  ctx.save();
-  roundedRectPath(ctx,r.x,r.y,r.w,r.h,isHead?7:6);
-  ctx.fillStyle=isHead?'#dff7e8':'#62d48c';
-  ctx.shadowColor='rgba(98,212,140,.22)';
-  ctx.shadowBlur=isHead?12:7;
-  ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.strokeStyle=isHead?'rgba(255,255,255,.48)':'rgba(255,255,255,.22)';
-  ctx.stroke();
+  const r=squareCellRect(seg.x,seg.y,0);
+  drawSquareModule(ctx,r,isHead?'#dff7e8':'#74d99f',isHead?'rgba(255,255,255,.5)':'rgba(255,255,255,.18)');
   if(invincible){
+    ctx.save();
+    ctx.strokeStyle='rgba(230,177,93,.88)';
     ctx.lineWidth=2;
-    ctx.strokeStyle='rgba(245,184,90,.86)';
-    ctx.stroke();
+    ctx.strokeRect(r.x+1,r.y+1,r.w-2,r.h-2);
+    ctx.restore();
   }
   if(autoMode&&isHead){
-    ctx.strokeStyle='rgba(76,201,240,.55)';
-    ctx.beginPath();
-    ctx.arc(r.x+r.w/2,r.y+r.h/2,12,0,Math.PI*2);
-    ctx.stroke();
+    ctx.save();
+    ctx.strokeStyle='rgba(102,217,239,.68)';
+    ctx.strokeRect(r.x+3.5,r.y+3.5,r.w-7,r.h-7);
+    ctx.restore();
   }
   if(isHead){
+    ctx.save();
     ctx.fillStyle='rgba(7,11,16,.72)';
-    const eyeX=direction==='left'?r.x+r.w*.28:direction==='right'?r.x+r.w*.68:r.x+r.w*.33;
-    const eyeY=direction==='up'?r.y+r.h*.28:direction==='down'?r.y+r.h*.68:r.y+r.h*.33;
-    ctx.fillRect(eyeX,eyeY,3,3);
-    ctx.fillRect(direction==='left'||direction==='right'?eyeX:eyeX+r.w*.32,direction==='up'||direction==='down'?eyeY:eyeY+r.h*.32,3,3);
+    if(direction==='left'||direction==='right'){
+      const x=direction==='left'?r.x+4:r.x+r.w-7;
+      ctx.fillRect(x,r.y+5,3,4);
+      ctx.fillRect(x,r.y+r.h-9,3,4);
+    }else{
+      const y=direction==='up'?r.y+4:r.y+r.h-7;
+      ctx.fillRect(r.x+5,y,4,3);
+      ctx.fillRect(r.x+r.w-9,y,4,3);
+    }
+    ctx.restore();
   }
-  ctx.restore();
 }
 function drawCompressedSegment(seg,index,isHead){
+  drawSquareCompressedModule(seg,index,isHead);
+}
+function drawSquareCompressedModule(seg,index,isHead){
   const canvas=$('gameCanvas'),ctx=canvas.getContext('2d');
-  const r=cellRect(seg.x,seg.y,isHead?2:3),lvl=seg.lvl||1;
-  ctx.save();
-  roundedRectPath(ctx,r.x,r.y,r.w,r.h,6);
-  ctx.fillStyle=lvl>=8?'#a78bfa':'#4cc9f0';
-  ctx.shadowColor=lvl>=8?'rgba(167,139,250,.34)':'rgba(76,201,240,.28)';
-  ctx.shadowBlur=10;
-  ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.strokeStyle='rgba(255,255,255,.34)';
-  ctx.stroke();
+  const r=squareCellRect(seg.x,seg.y,0),lvl=seg.lvl||1;
+  drawSquareModule(ctx,r,lvl>=8?'#9d91ff':'#66d9ef','rgba(255,255,255,.28)');
   if(invincible){
+    ctx.save();
+    ctx.strokeStyle='rgba(230,177,93,.88)';
     ctx.lineWidth=2;
-    ctx.strokeStyle='rgba(245,184,90,.86)';
-    ctx.stroke();
+    ctx.strokeRect(r.x+1,r.y+1,r.w-2,r.h-2);
+    ctx.restore();
   }
+  ctx.save();
   ctx.fillStyle='#061019';
   ctx.font=`900 ${lvl>=10?8:10}px Segoe UI`;
   ctx.textAlign='center';

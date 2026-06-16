@@ -2,6 +2,14 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.4.0] - 2026-06-16
+
+### Changed
+
+- Reworked snake, compressed body, normal food, merged food, and special food into square grid-aligned modules.
+- Changed snake rendering so adjacent body modules connect without intentional gaps.
+- Tuned the control-console visual system toward a more restrained square-module instrument style.
+
 ## [0.3.1] - 2026-06-16
 
 ### Changed

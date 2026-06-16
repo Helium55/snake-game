@@ -88,6 +88,11 @@ for (const marker of [
 }
 
 assert(
+  source.includes('--object-shape:square-module'),
+  'CSS should expose the square-module object shape marker'
+);
+
+assert(
   /drawSnakeSegment\(seg,index,isHead\)\{[\s\S]*drawSquareSnakeModule/.test(source) &&
   /drawCompressedSegment\(seg,index,isHead\)\{[\s\S]*drawSquareCompressedModule/.test(source),
   'snake drawing should use square modules for normal and compressed body segments'

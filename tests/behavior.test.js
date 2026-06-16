@@ -45,6 +45,7 @@ function element(id) {
       return {
         clearRect() {},
         fillRect() {},
+        strokeRect() {},
         beginPath() {},
         arc() {},
         fill() {},
