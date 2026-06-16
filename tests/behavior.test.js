@@ -65,6 +65,7 @@ function element(id) {
 function makeContext() {
   const elements = new Map();
   const timeouts = [];
+  let timerId = 0;
   const storage = new Map();
   const body = element('body');
   const context = {
@@ -73,8 +74,15 @@ function makeContext() {
     Date,
     Promise,
     parseInt,
-    setTimeout(fn) { timeouts.push(fn); return timeouts.length; },
-    clearTimeout() {},
+    setTimeout(fn, delay = 0) {
+      const id = ++timerId;
+      timeouts.push({ id, fn, delay, cleared: false });
+      return id;
+    },
+    clearTimeout(id) {
+      const timer = timeouts.find(t => t.id === id);
+      if (timer) timer.cleared = true;
+    },
     setInterval() { return 1; },
     clearInterval() {},
     requestAnimationFrame() { return 1; },
@@ -106,8 +114,9 @@ function makeContext() {
   vm.runInContext('initGame(); clearTimeout(tickTimer); if (specialFoodTimer) clearInterval(specialFoodTimer);', context);
   context.__runTimeouts = () => {
     const pending = timeouts.splice(0);
-    for (const fn of pending) if (typeof fn === 'function') fn();
+    for (const timer of pending) if (!timer.cleared && typeof timer.fn === 'function') timer.fn();
   };
+  context.__timeouts = timeouts;
   return context;
 }
 
@@ -369,6 +378,55 @@ __testResult = { score, foodEaten };
 
 assert.equal(playerSpeedScore.score, 1.2, '1.2x player speed should award 1.2x points');
 assert.equal(playerSpeedScore.foodEaten, 1, 'speed multiplier should not change food progress');
+
+const queuedDirectionInput = runScenario(`
+snake = [{x:10,y:10,lvl:1},{x:9,y:10,lvl:1},{x:8,y:10,lvl:1}];
+direction = 'right';
+nextDirection = 'right';
+inputQueue = [];
+food = {x:20,y:20};
+foods = [food];
+specialFood = null;
+paused = false;
+gameOver = false;
+changeDirection('up');
+changeDirection('left');
+gameTick();
+clearTimeout(tickTimer);
+const afterFirst = { head: {...snake[0]}, direction, nextDirection, queue: inputQueue.slice() };
+gameTick();
+clearTimeout(tickTimer);
+__testResult = { afterFirst, afterSecond: { head: snake[0], direction, gameOver } };
+`);
+
+assert.equal(queuedDirectionInput.afterFirst.direction, 'up', 'first queued input should apply on the next tick');
+assert.equal(queuedDirectionInput.afterFirst.queue.length, 1, 'second quick input should remain queued after the first turn');
+assert.equal(queuedDirectionInput.afterSecond.direction, 'left', 'second quick input should apply on the following tick');
+assert.equal(queuedDirectionInput.afterSecond.head.x, 9);
+assert.equal(queuedDirectionInput.afterSecond.head.y, 9);
+assert.equal(queuedDirectionInput.afterSecond.head.lvl, 1);
+assert.equal(queuedDirectionInput.afterSecond.gameOver, false);
+
+const inputTickExpedite = runScenario(`
+scheduleGameTick(130);
+const before = __timeouts.map(t => ({ id: t.id, delay: t.delay, cleared: t.cleared }));
+direction = 'right';
+nextDirection = 'right';
+inputQueue = [];
+paused = false;
+gameOver = false;
+autoMode = false;
+changeDirection('up');
+__testResult = {
+  before,
+  after: __timeouts.map(t => ({ id: t.id, delay: t.delay, cleared: t.cleared })),
+  tickTimer
+};
+`);
+
+assert.equal(inputTickExpedite.before.at(-1).delay, 130, 'test setup should start with a slow pending tick');
+assert.equal(inputTickExpedite.after.find(t => t.id === inputTickExpedite.before.at(-1).id).cleared, true, 'direction input should clear the slow pending tick');
+assert(inputTickExpedite.after.some(t => t.id === inputTickExpedite.tickTimer && t.delay <= 45), 'direction input should schedule a near-term tick');
 
 const upgradeTriggerWithSpeedSlider = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];

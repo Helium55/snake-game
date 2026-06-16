@@ -16,8 +16,25 @@ assert(
 );
 
 assert(
-  /if\(!autoMode&&isValidDirection\(nextDirection\)\)direction=nextDirection/.test(source),
-  'manual nextDirection must not override the AI-selected direction in auto mode'
+  /if\(!autoMode\)\{\s*if\(inputQueue\.length\)nextDirection=inputQueue\.shift\(\);\s*if\(isValidDirection\(nextDirection\)\)direction=nextDirection;\s*\}/.test(source),
+  'manual input queue must not override the AI-selected direction in auto mode'
+);
+
+assert(
+  source.includes('INPUT_ACCEL_DELAY') &&
+  source.includes('INPUT_QUEUE_LIMIT=2') &&
+  source.includes('function scheduleGameTick') &&
+  source.includes('function speedUpPendingTickForInput') &&
+  source.includes('inputQueue.length>=INPUT_QUEUE_LIMIT'),
+  'manual controls should queue quick turns and accelerate the next pending tick'
+);
+
+assert(
+  source.includes('swipeHandled') &&
+  source.includes("gc.addEventListener('touchmove'") &&
+  source.includes('{passive:false}') &&
+  /if\(Math\.abs\(dx\)<20&&Math\.abs\(dy\)<20\)return/.test(source),
+  'mobile swipe controls should turn during touchmove once the gesture crosses the threshold'
 );
 
 assert(

@@ -2,6 +2,13 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.7] - 2026-06-16
+
+### Changed
+
+- Improved manual control responsiveness by queuing quick direction changes and accelerating the next pending game tick after input.
+- Made mobile swipe controls turn during `touchmove` once the gesture crosses the movement threshold instead of waiting for `touchend`.
+
 ## [0.2.6] - 2026-06-16
 
 ### Added
