@@ -41,6 +41,11 @@ assert(
 );
 
 assert(
+  /body\{[^}]*flex-direction:column[^}]*overflow-x:hidden/.test(source),
+  'page body should use column flex layout and hide horizontal overflow so screens stay centered'
+);
+
+assert(
   /SHOP_UPGRADES\.filter\(c=>!\(c\.id==='magnet'&&magnetLevel\(\)>=3\)\)/.test(source),
   'max-level magnet should be removed from the shop draw pool'
 );

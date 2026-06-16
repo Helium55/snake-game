@@ -2,6 +2,13 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.1] - 2026-06-16
+
+### Fixed
+
+- Fixed synthwave style shifting the menu and game screen off-center by preventing horizontal overflow and using column page layout.
+- Made the synthwave game canvas translucent with a light blur layer so the sunset background shows through during play.
+
 ## [0.2.0] - 2026-06-16
 
 ### Added
