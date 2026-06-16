@@ -75,6 +75,23 @@ for (const marker of [
   assert(source.includes(marker), `distinct visual helper missing: ${marker}`);
 }
 
+for (const marker of [
+  'occupiedCells',
+  'function markOccupiedDirty',
+  'function rebuildOccupiedCells',
+  'function isSnakeOccupiedCell',
+  'cachedBodyPoints',
+  'bodyPointsDirty',
+  'function markBodyPointsDirty',
+  'foodCellsByLevel',
+  'function mergeFoodsFrom',
+  'autoPathCache',
+  'function invalidateAutoPath',
+  'function cachedAutoDirection',
+]) {
+  assert(source.includes(marker), `late-game performance cache marker missing: ${marker}`);
+}
+
 assert(
   source.includes('score-value score-pop-ready') &&
   source.includes('canvas-effect-ring') &&

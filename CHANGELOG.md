@@ -2,6 +2,13 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.3.1] - 2026-06-16
+
+### Changed
+
+- Optimized late-game performance with cached snake occupancy checks, cached body point totals, local food merge checks, and cached automation paths.
+- Reduced repeated full scans in spawning, pathfinding, body economy, and food merging while preserving existing gameplay rules.
+
 ## [0.3.0] - 2026-06-16
 
 ### Added

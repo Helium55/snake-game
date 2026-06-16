@@ -815,6 +815,10 @@ function resetAutoShop(){autoShopPurchases={}}
 let currentVisualStyle='default';
 let canvasEffects=[];
 let lastScoreValue=0;
+let occupiedCells=new Set(),occupiedDirty=true;
+let cachedBodyPoints=0,bodyPointsDirty=true;
+let foodCellsByLevel=new Map();
+let autoPathCache={targetKey:'',path:[]};
 
 function applyBg(bg){
   const b=$('gameCanvas');if(!b)return;
@@ -891,8 +895,31 @@ function scoreMultiplier(){
   return scoreMult*playerSpeedMult;
 }
 
+function cellKey(x,y){return `${x},${y}`}
+function markOccupiedDirty(){occupiedDirty=true}
+function markBodyPointsDirty(){bodyPointsDirty=true}
+function invalidateAutoPath(){autoPathCache={targetKey:'',path:[]}}
+function markSnakeChanged(){markOccupiedDirty();markBodyPointsDirty();invalidateAutoPath()}
+function rebuildOccupiedCells(){
+  occupiedCells=new Set();
+  if(snake)for(const s of snake)occupiedCells.add(cellKey(s.x,s.y));
+  occupiedDirty=false;
+  return occupiedCells;
+}
+function isSnakeOccupiedCell(cell,skipTail=false){
+  if(!snake||!snake.length)return false;
+  if(skipTail){
+    for(let i=0;i<snake.length-1;i++)if(snake[i].x===cell.x&&snake[i].y===cell.y)return true;
+    return false;
+  }
+  if(occupiedDirty)rebuildOccupiedCells();
+  return occupiedCells.has(cellKey(cell.x,cell.y));
+}
 function totalBodyPoints(){
-  let p=0;for(const s of snake)p+=segmentValue(s.lvl);return p;
+  if(!bodyPointsDirty)return cachedBodyPoints;
+  let p=0;for(const s of snake)p+=segmentValue(s.lvl);
+  cachedBodyPoints=p;bodyPointsDirty=false;
+  return p;
 }
 function segmentValue(lvl){
   return Math.pow(mergeThreshold,(lvl||1)-1);
@@ -915,6 +942,7 @@ function rebuildBodyFromLevels(levels){
     const pos=path[Math.min(i,path.length-1)]||tail;
     return{x:pos.x,y:pos.y,lvl};
   });
+  markSnakeChanged();
 }
 function compressBody(){
   if(!bodyCompress||snake.length<mergeThreshold)return;
@@ -924,17 +952,18 @@ function compressBody(){
 function initGame(){
   const mid=Math.floor(GRID/2);
   snake=[{x:mid,y:mid,lvl:1},{x:mid-1,y:mid,lvl:1},{x:mid-2,y:mid,lvl:1}];
+  markSnakeChanged();
   direction='right';nextDirection='right';score=0;level=1;gameOver=false;paused=false;invincible=false;cheatInvincible=false;timedInvincible=false;
   inputLocked=false;inputQueue=[];tickDueAt=0;scoreSubmitted=false;shieldCount=0;usedInvincibleThisRun=false;
   foodEaten=0;upgradeProgress=0;upgradeCount=0;nextUpgradeAt=UPGRADE_EVERY;
   bodyCompress=false;noSelfCollide=false;wrapMode=false;
   activeFree=[];activeShop=[];
   growExtra=0;scoreMult=1;specialChanceBonus=0;dodgeChance=0;shopPurchaseCount=0;
-  bodyPoints=3;mergeThreshold=4;critChance=0;splitChance=0;goldenTouch=0;ghostTail=0;
+  bodyPoints=3;cachedBodyPoints=3;bodyPointsDirty=false;mergeThreshold=4;critChance=0;splitChance=0;goldenTouch=0;ghostTail=0;
   runStartTime=Date.now();tailGrowTimer=runStartTime;maxShieldBonus=0;timeWarpTimer=runStartTime;timeWarpUntil=0;safeZoneUntil=runStartTime+5000;revengeUntil=0;
   autoMode=false;autoSpeedDivider=4;autoCollectRange=1;autoFoodBonus=0;
   autoFoodSpawn=1;autoSpecialRate=0;window._aiSmart=false;
-  canvasEffects=[];lastScoreValue=0;
+  canvasEffects=[];lastScoreValue=0;invalidateAutoPath();
   resetAutoShop();
   $('autoShopBtn').style.display='none';$('autoShopPanel').style.display='none';
   $('gameCanvas').style.background=canvasBaseBackground();
@@ -954,62 +983,69 @@ function scheduleSpecialFood(){
   specialFoodTimer=setInterval(()=>{if(!gameOver&&!paused&&!specialFood&&Math.random()<base)spawnSpecialFood()},3500+Math.random()*4000);
 }
 function spawnSpecialFood(){
-  let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){specialFood=c;specialFood.spawnTime=Date.now()}
+  let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){specialFood=c;specialFood.spawnTime=Date.now();invalidateAutoPath()}
 }
 function syncPrimaryFood(){food=foods&&foods.length?foods[0]:null}
-function spawnFood(){if(!snake||!snake.length)return;let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){foods.push({...c,lvl:1});mergeFoods();syncPrimaryFood()}}
+function spawnFood(){if(!snake||!snake.length)return;let c,t=0;do{c=randomCell();t++}while(isOccupied(c,false)&&t<200);if(t<200){const f={...c,lvl:1};foods.push(f);mergeFoodsFrom(f);syncPrimaryFood();invalidateAutoPath()}}
 function shopUpgradeLevel(id){return activeShop.filter(c=>c.id===id).length}
 function magnetLevel(){return Math.min(3,shopUpgradeLevel('magnet'))}
 function magnetRange(){return magnetLevel()>0?3+(magnetLevel()-1)*2:0}
+function rebuildFoodCellsByLevel(){
+  foodCellsByLevel=new Map();
+  if(!foods)return foodCellsByLevel;
+  for(const f of foods){
+    const lvl=Math.min(f.lvl||1,BODY_LEVEL_CAP);
+    if(!foodCellsByLevel.has(lvl))foodCellsByLevel.set(lvl,new Map());
+    foodCellsByLevel.get(lvl).set(cellKey(f.x,f.y),f);
+  }
+  return foodCellsByLevel;
+}
+function mergeFoodsFrom(startFood){
+  if(!foods||foods.length<FOOD_MERGE_COUNT||!startFood)return false;
+  rebuildFoodCellsByLevel();
+  const lvl=Math.min(startFood.lvl||1,BODY_LEVEL_CAP);
+  if(lvl>=BODY_LEVEL_CAP)return false;
+  const sameLevel=foodCellsByLevel.get(lvl);
+  if(!sameLevel||sameLevel.size<FOOD_MERGE_COUNT)return false;
+  const queue=[startFood],seen=new Set([cellKey(startFood.x,startFood.y)]),group=[];
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  while(queue.length){
+    const cur=queue.shift();
+    group.push(cur);
+    for(const [dx,dy] of dirs){
+      const key=cellKey(cur.x+dx,cur.y+dy);
+      if(seen.has(key))continue;
+      const next=sameLevel.get(key);
+      if(next){seen.add(key);queue.push(next)}
+    }
+  }
+  if(group.length<FOOD_MERGE_COUNT)return false;
+  const mergeGroup=group.slice(0,FOOD_MERGE_COUNT);
+  const remove=new Set(mergeGroup);
+  const base=mergeGroup[0];
+  foods=foods.filter(f=>!remove.has(f));
+  const mergedFood={x:base.x,y:base.y,lvl:lvl+1};
+  foods.push(mergedFood);
+  pushCanvasEffect('merge',base.x,base.y,`L${lvl+1}`);
+  invalidateAutoPath();
+  if(mergeFoodsFrom(mergedFood))return true;
+  syncPrimaryFood();
+  return true;
+}
 function mergeFoods(){
   if(!foods||foods.length<FOOD_MERGE_COUNT)return;
   let merged=true;
   while(merged){
     merged=false;
-    const byLevel=new Map();
-    for(let i=0;i<foods.length;i++){
-      const lvl=Math.min(foods[i].lvl||1,BODY_LEVEL_CAP);
-      if(!byLevel.has(lvl))byLevel.set(lvl,[]);
-      byLevel.get(lvl).push(i);
-    }
-    for(const [lvl,indices] of byLevel){
-      if(lvl>=BODY_LEVEL_CAP||indices.length<FOOD_MERGE_COUNT)continue;
-      const indexSet=new Set(indices);
-      const seen=new Set();
-      for(const start of indices){
-        if(seen.has(start))continue;
-        const queue=[start],group=[];
-        seen.add(start);
-        while(queue.length){
-          const idx=queue.shift();
-          group.push(idx);
-          const cur=foods[idx];
-          for(const next of indices){
-            if(seen.has(next)||!indexSet.has(next))continue;
-            const other=foods[next];
-            if(Math.abs(cur.x-other.x)+Math.abs(cur.y-other.y)===1){
-              seen.add(next);queue.push(next);
-            }
-          }
-        }
-        if(group.length>=FOOD_MERGE_COUNT){
-          const mergeGroup=group.slice(0,FOOD_MERGE_COUNT);
-          const base=foods[mergeGroup[0]];
-          const remove=new Set(mergeGroup);
-          foods=foods.filter((_,idx)=>!remove.has(idx));
-          foods.push({x:base.x,y:base.y,lvl:lvl+1});
-          pushCanvasEffect('merge',base.x,base.y,`L${lvl+1}`);
-          merged=true;
-          break;
-        }
-      }
-      if(merged)break;
+    rebuildFoodCellsByLevel();
+    for(const f of [...foods]){
+      if(mergeFoodsFrom(f)){merged=true;break}
     }
   }
   syncPrimaryFood();
 }
 function isOccupied(cell,skipTail){
-  if(snake.some((s,i)=>s.x===cell.x&&s.y===cell.y&&!(skipTail&&i===snake.length-1)))return true;
+  if(isSnakeOccupiedCell(cell,skipTail))return true;
   if(foods&&foods.some(f=>f.x===cell.x&&f.y===cell.y))return true;
   if(specialFood&&specialFood.x===cell.x&&specialFood.y===cell.y)return true;
   return false;
@@ -1024,29 +1060,47 @@ function isSafeAutoCell(cell,target){
   if(!wrapMode&&(cell.x<0||cell.x>=GRID||cell.y<0||cell.y>=GRID))return false;
   const x=(cell.x+GRID)%GRID,y=(cell.y+GRID)%GRID;
   const willEat=target&&x===target.x&&y===target.y;
-  const len=willEat?snake.length:snake.length-1;
-  for(let i=0;i<len;i++)if(snake[i].x===x&&snake[i].y===y&&!noSelfCollide)return false;
+  if(!noSelfCollide&&isSnakeOccupiedCell({x,y},!willEat))return false;
   return true;
 }
-function findAutoDirection(targets){
+function autoTargetsKey(targets){
+  return targets.map(t=>`${t.x},${t.y},${t.lvl||1},${t===specialFood?'s':'f'}`).sort().join('|');
+}
+function findAutoPath(targets){
   const start=snake[0],dirs=['up','down','left','right'];
   const targetSet=new Set(targets.map(t=>`${t.x},${t.y}`));
-  const q=[{x:start.x,y:start.y,first:null}],seen=new Set([`${start.x},${start.y}`]);
+  const q=[{x:start.x,y:start.y,path:[]}],seen=new Set([`${start.x},${start.y}`]);
   while(q.length){
     const cur=q.shift();
-    if(cur.first&&targetSet.has(`${cur.x},${cur.y}`))return cur.first;
+    if(cur.path.length&&targetSet.has(`${cur.x},${cur.y}`))return cur.path;
     for(const d of dirs){
-      if(cur.first===null&&!isValidDirection(d))continue;
+      if(cur.path.length===0&&!isValidDirection(d))continue;
       let n=nextCellFrom(cur,d);
       if(wrapMode){n.x=(n.x+GRID)%GRID;n.y=(n.y+GRID)%GRID}
       const key=`${n.x},${n.y}`;
       if(seen.has(key))continue;
       const target=targets.find(t=>t.x===n.x&&t.y===n.y);
       if(!isSafeAutoCell(n,target))continue;
-      seen.add(key);q.push({x:n.x,y:n.y,first:cur.first||d});
+      seen.add(key);q.push({x:n.x,y:n.y,path:[...cur.path,d]});
     }
   }
-  return dirs.find(d=>isValidDirection(d)&&isSafeAutoCell(nextCellFrom(start,d),null))||direction;
+  const fallback=dirs.find(d=>isValidDirection(d)&&isSafeAutoCell(nextCellFrom(start,d),null))||direction;
+  return fallback?[fallback]:[];
+}
+function findAutoDirection(targets){
+  return findAutoPath(targets)[0]||direction;
+}
+function cachedAutoDirection(targets){
+  const targetKey=autoTargetsKey(targets);
+  if(autoPathCache.targetKey===targetKey&&autoPathCache.path.length){
+    const next=autoPathCache.path.shift();
+    const nextCell=nextCellFrom(snake[0],next);
+    const target=targets.find(t=>t.x===nextCell.x&&t.y===nextCell.y);
+    if(isValidDirection(next)&&isSafeAutoCell(nextCell,target))return next;
+  }
+  const path=findAutoPath(targets);
+  autoPathCache={targetKey,path:path.slice(1)};
+  return path[0]||direction;
 }
 
 // ============================================================
@@ -1169,7 +1223,7 @@ function showUpgradeScreen(){
     applyUpgrade(pickedFree,isFirst);
     if(pickedShop)applyUpgrade(pickedShop,false);
     if(pickedFree==='bonus_food')foodEaten+=3;
-    if(pickedFree==='body_surge'){for(let i=0;i<5;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
+    if(pickedFree==='body_surge'){for(let i=0;i<5;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}markSnakeChanged()}
     if(pickedFree==='merge_boost'){
       const currentBodyPoints=totalBodyPoints();
       mergeThreshold=Math.max(2,mergeThreshold-1);
@@ -1205,6 +1259,7 @@ function deductBodyPoints(cost){
     snake.pop();
     for(let i=0;i<mergeThreshold;i++)snake.push({x:tail.x,y:tail.y,lvl:lvl-1});
   }
+  markSnakeChanged();
   bodyPoints=totalBodyPoints();
 }
 function trimTailPoints(points){
@@ -1221,6 +1276,7 @@ function trimTailPoints(points){
     snake.pop();
     for(let i=0;i<mergeThreshold;i++)snake.push({x:tail.x,y:tail.y,lvl:lvl-1});
   }
+  markSnakeChanged();
 }
 
 function applyUpgrade(id,isFirst){
@@ -1302,6 +1358,7 @@ function loopParticles(){
 // ============================================================
 function gameTick(){
   if(paused||gameOver)return;
+  markOccupiedDirty();
   inputLocked=false;
   if((!foods||!foods.length)&&food)foods=[food];
   syncPrimaryFood();
@@ -1310,7 +1367,7 @@ function gameTick(){
   if(autoMode){
     const targets=[...(foods||[])];
     if(window._aiSmart&&specialFood)targets.unshift(specialFood);
-    if(targets.length)direction=findAutoDirection(targets);
+    if(targets.length)direction=cachedAutoDirection(targets);
   }
 
   if(!autoMode){
@@ -1368,7 +1425,7 @@ function gameTick(){
     }
   }
 
-  snake.unshift(head);
+  snake.unshift(head);markSnakeChanged();
 
   // Periodic shield
   if(activeShop.some(c=>c.id==='periodic_shield')){
@@ -1377,7 +1434,7 @@ function gameTick(){
   }
 
   if(activeFree.some(c=>c.id==='tail_grow')&&Date.now()-tailGrowTimer>=5000){
-    const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1});tailGrowTimer=Date.now();
+    const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1});markSnakeChanged();tailGrowTimer=Date.now();
   }
 
   if(activeShop.some(c=>c.id==='time_warp')&&Date.now()-timeWarpTimer>=30000){
@@ -1394,15 +1451,16 @@ function gameTick(){
     pulseScore();pushCanvasEffect('eat',head.x,head.y,`+${Math.round(pts)}`);
     const extraGrow=value+growExtra;
     for(let i=0;i<extraGrow-1;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
+    markSnakeChanged();
     // Auto food bonus: extra body points
-    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
+    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}markSnakeChanged()}
     foods.splice(eatenFoodIndex,1);syncPrimaryFood();
     sfxEat();spawnFood();
     if(Math.random()<goldenTouch&&!specialFood)spawnSpecialFood();
     if(Math.random()<splitChance)spawnFood();
     if(autoMode)for(let i=0;i<autoFoodSpawn-1;i++)spawnFood();
     if(autoMode&&Math.random()<autoSpecialRate&&!specialFood)spawnSpecialFood();
-    if(specialFood&&foods.some(f=>f.x===specialFood.x&&f.y===specialFood.y))specialFood=null;
+    if(specialFood&&foods.some(f=>f.x===specialFood.x&&f.y===specialFood.y)){specialFood=null;invalidateAutoPath()}
     mergeFoods();
   }else if(willEatSpecial){
     const bonus=activeShop.some(c=>c.id==='double_special')?4:2;
@@ -1413,11 +1471,12 @@ function gameTick(){
     pulseScore();pushCanvasEffect('special',head.x,head.y,`+${Math.round(pts)}`);
     const extraGrow=bonus+growExtra;
     for(let i=0;i<extraGrow;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
-    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}}
-    sfxSpecial();specialFood=null;
+    markSnakeChanged();
+    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}markSnakeChanged()}
+    sfxSpecial();specialFood=null;invalidateAutoPath();
   }else{trimTailPoints(1)}
 
-  if(specialFood&&Date.now()-specialFood.spawnTime>8000)specialFood=null;
+  if(specialFood&&Date.now()-specialFood.spawnTime>8000){specialFood=null;invalidateAutoPath()}
 
   // Magnet
   if(magnetLevel()>0){

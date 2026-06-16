@@ -123,6 +123,13 @@ For a stronger rollback to a specific tag, create a new revert commit that resto
 - Canvas visuals should keep distinct helpers for food chips, merged food, special food, normal snake segments, and compressed snake segments.
 - Score/eating/upgrade feedback must stay bounded and lightweight to avoid late-game slowdown.
 
+## Performance Cache Notes
+
+- `occupiedCells` caches snake occupancy. Call `markSnakeChanged()` after changing `snake` so collision, spawning, and auto pathfinding do not read stale occupancy.
+- `cachedBodyPoints` is the body point cache. Call `markBodyPointsDirty()` or `markSnakeChanged()` after direct body mutations before reading `totalBodyPoints()`.
+- `mergeFoodsFrom(food)` performs local food merging around a changed food. Keep `mergeFoods()` for full reconciliation after bulk food movement.
+- `autoPathCache` caches automation directions. Call `invalidateAutoPath()` when targets, food positions, special food, or snake geometry changes.
+
 ## Recent Fix Context
 
 - Automatic mode pathfinding should choose safe paths toward food and not keep stale manual directions.

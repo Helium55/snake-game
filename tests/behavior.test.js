@@ -185,6 +185,7 @@ assert.equal(JSON.stringify(compressedPayment.levels), JSON.stringify([1, 1, 1])
 
 const compressedMove = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:2}];
+markBodyPointsDirty();
 direction = 'right';
 nextDirection = 'right';
 bodyCompress = true;
@@ -208,6 +209,7 @@ snake = [
   {x:4,y:5,lvl:1},{x:3,y:5,lvl:1},{x:2,y:5,lvl:1},{x:1,y:5,lvl:1},
   {x:0,y:5,lvl:1},{x:0,y:6,lvl:1},{x:0,y:7,lvl:1}
 ];
+markBodyPointsDirty();
 bodyCompress = true;
 mergeThreshold = 4;
 const before = totalBodyPoints();
@@ -240,6 +242,7 @@ assert.equal(JSON.stringify(compressedRepresentation.afterEatLevels), JSON.strin
 
 const autoCollect = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+markBodyPointsDirty();
 direction = 'right';
 nextDirection = 'right';
 autoMode = true;
@@ -508,6 +511,7 @@ assert.equal(foodMerge.foods[0].lvl, 2, 'merged food should become level 2');
 
 const highLevelFoodValue = runScenario(`
 snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+markBodyPointsDirty();
 food = {x:6,y:5,lvl:2};
 foods = [food];
 specialFood = null;
@@ -568,5 +572,31 @@ __testResult = { food: foods[0] };
 `);
 
 assert.equal(highLevelMagnetRange.food.x, 10, 'level-3 magnet should pull food from farther away than level 1');
+
+const bodyPointCacheInvalidation = runScenario(`
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:2}];
+mergeThreshold = 4;
+markBodyPointsDirty();
+const first = totalBodyPoints();
+snake.push({x:3,y:5,lvl:1});
+markBodyPointsDirty();
+const second = totalBodyPoints();
+bodyCompress = true;
+compressBody();
+const third = totalBodyPoints();
+__testResult = {
+  first,
+  second,
+  third,
+  cachedBodyPoints,
+  bodyPointsDirty
+};
+`);
+
+assert.equal(bodyPointCacheInvalidation.first, 5, 'cached body points should include compressed segment value');
+assert.equal(bodyPointCacheInvalidation.second, 6, 'body point cache should update after snake growth is marked dirty');
+assert.equal(bodyPointCacheInvalidation.third, 6, 'compression should preserve cached body point total');
+assert.equal(bodyPointCacheInvalidation.cachedBodyPoints, 6, 'cached body points should store the latest total');
+assert.equal(bodyPointCacheInvalidation.bodyPointsDirty, false, 'totalBodyPoints should leave the cache clean after recomputing');
 
 console.log('behavior checks passed');
