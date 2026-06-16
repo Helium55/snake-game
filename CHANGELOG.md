@@ -2,6 +2,15 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.4] - 2026-06-16
+
+### Changed
+
+- Removed the synthwave building and skyline layers.
+- Moved the synthwave perspective grid down to the bottom of the screen while keeping its drift animation.
+- Restored the synthwave sunset scanline animation with a short alternate loop to avoid visible jumps.
+- Updated the synthwave style option description to match the current look.
+
 ## [0.2.3] - 2026-06-16
 
 ### Changed
