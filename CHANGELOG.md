@@ -2,6 +2,19 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.3.0] - 2026-06-16
+
+### Added
+
+- Added the unified Precision Control Console frontend style.
+- Added distinct canvas visuals for snake segments, compressed body levels, normal food, merged food, and special food.
+- Added local feedback animations for score increases, eating, food merging, and upgrade selection.
+
+### Changed
+
+- Reworked the default, synthwave, and acid styles to share one component system and responsive layout.
+- Reworked the upgrade overlay, automation shop, speed control, and mobile controls for clearer hierarchy and touch feedback.
+
 ## [0.2.7] - 2026-06-16
 
 ### Changed

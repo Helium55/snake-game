@@ -311,12 +311,12 @@ __testResult = {
 assert.equal(visualStyleSwitch.synthwave.currentVisualStyle, 'synthwave', 'style switch should apply the synthwave visual style');
 assert.equal(visualStyleSwitch.synthwave.hasBodyClass, true, 'synthwave style should mark the page body');
 assert.equal(visualStyleSwitch.synthwave.stored, 'synthwave', 'style switch should save the synthwave preference');
-assert.equal(visualStyleSwitch.synthwave.canvasBackground, 'rgba(7,0,18,0.58)', 'synthwave style should use a translucent canvas base color');
+assert.equal(visualStyleSwitch.synthwave.canvasBackground, 'rgba(9,7,21,0.72)', 'synthwave style should use the unified translucent canvas base color');
 assert.equal(visualStyleSwitch.defaultStyle, 'default', 'style switch should return to default style');
 assert.equal(visualStyleSwitch.hasDefaultBodyClass, true, 'default style should mark the page body');
 assert.equal(visualStyleSwitch.hasSynthwaveBodyClass, false, 'switching back should remove synthwave body class');
 assert.equal(visualStyleSwitch.stored, 'default', 'style switch should save the default preference');
-assert.equal(visualStyleSwitch.canvasBackground, '#080812', 'default style should restore the default canvas base color');
+assert.equal(visualStyleSwitch.canvasBackground, '#061018', 'default style should restore the precision control canvas base color');
 
 const autoShopResetsForNewGame = runScenario(`
 autoShopPurchases = { auto_speed: 2, auto_food_bonus: 1, env_galaxy: 1 };

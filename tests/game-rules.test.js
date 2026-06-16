@@ -98,8 +98,8 @@ assert(
 );
 
 assert(
-  /canvasBaseBackground\(\)\{return currentVisualStyle==='synthwave'\?'rgba\(7,0,18,0\.58\)':currentVisualStyle==='acid'\?'rgba\(10,16,0,0\.68\)'/.test(source),
-  'acid art style should use a matching translucent canvas background'
+  /canvasBaseBackground\(\)\{return currentVisualStyle==='synthwave'\?'rgba\(9,7,21,0\.72\)':currentVisualStyle==='acid'\?'rgba\(9,13,10,0\.74\)'/.test(source),
+  'theme styles should use matching unified translucent canvas backgrounds'
 );
 
 assert(
@@ -149,8 +149,8 @@ assert(
 );
 
 assert(
-  /if\(pickedShop===card\.dataset\.id\)\{card\.style\.boxShadow='';pickedShop='';updateConfirmBtn\(\);return\}/.test(source),
-  'clicking the selected shop upgrade again should cancel that optional purchase'
+  /if\(pickedShop===card\.dataset\.id\)\{card\.style\.boxShadow='';card\.classList\.remove\('selected'\);pickedShop='';updateConfirmBtn\(\);return\}/.test(source),
+  'clicking the selected shop upgrade again should cancel that optional purchase and selected state'
 );
 
 assert(
