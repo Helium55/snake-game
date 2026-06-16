@@ -76,6 +76,30 @@ for (const marker of [
 }
 
 for (const marker of [
+  'SQUARE_MODULE_PAD=0',
+  'function squareCellRect',
+  'function drawSquareModule',
+  'function drawSquareFoodModule',
+  'function drawSquareSpecialModule',
+  'function drawSquareSnakeModule',
+  'function drawSquareCompressedModule',
+]) {
+  assert(source.includes(marker), `square module visual marker missing: ${marker}`);
+}
+
+assert(
+  /drawSnakeSegment\(seg,index,isHead\)\{[\s\S]*drawSquareSnakeModule/.test(source) &&
+  /drawCompressedSegment\(seg,index,isHead\)\{[\s\S]*drawSquareCompressedModule/.test(source),
+  'snake drawing should use square modules for normal and compressed body segments'
+);
+
+assert(
+  /drawFoodChip\(f\)\{[\s\S]*drawSquareFoodModule/.test(source) &&
+  /drawSpecialFoodCore\(f\)\{[\s\S]*drawSquareSpecialModule/.test(source),
+  'food drawing should use square modules rather than rounded or circular objects'
+);
+
+for (const marker of [
   'occupiedCells',
   'function markOccupiedDirty',
   'function rebuildOccupiedCells',
