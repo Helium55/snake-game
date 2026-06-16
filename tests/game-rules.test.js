@@ -41,6 +41,13 @@ assert(
 );
 
 assert(
+  source.includes('class="synth-city"') &&
+  source.includes('.synth-city::before') &&
+  source.includes('.synth-city::after'),
+  'synthwave style should include a fixed skyline layer with buildings and a horizon glow'
+);
+
+assert(
   /body\{[^}]*flex-direction:column[^}]*overflow-x:hidden/.test(source),
   'page body should use column flex layout and hide horizontal overflow so screens stay centered'
 );

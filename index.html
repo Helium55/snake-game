@@ -20,6 +20,26 @@
   body.style-synthwave .canvas-container{border-color:rgba(0,238,255,0.5);background:rgba(7,0,18,0.28);backdrop-filter:blur(6px);box-shadow:0 0 28px rgba(0,238,255,0.24),0 0 70px rgba(255,49,214,0.18),0 30px 80px rgba(0,0,0,0.58)}
   body.style-synthwave .btn-restart,body.style-synthwave .menu-btn.primary{background:linear-gradient(90deg,rgba(255,49,214,0.24),rgba(0,238,255,0.2));border-color:rgba(0,238,255,0.44);color:#00eeff}
   body.style-synthwave .btn-menu{background:#ff31d6;color:#090014}
+  .synth-city{display:none;position:fixed;left:0;right:0;bottom:0;height:52vh;z-index:0;pointer-events:none;overflow:hidden}
+  body.style-synthwave .synth-city{display:block}
+  .synth-city::before{content:'';position:absolute;left:50%;bottom:23vh;width:min(980px,130vw);height:160px;transform:translateX(-50%);background:
+    linear-gradient(#070012 0 0) 0 78px/54px 82px,
+    linear-gradient(#090018 0 0) 62px 44px/38px 116px,
+    linear-gradient(#060010 0 0) 108px 98px/70px 62px,
+    linear-gradient(#0b0020 0 0) 186px 30px/48px 130px,
+    linear-gradient(#070012 0 0) 242px 68px/76px 92px,
+    linear-gradient(#05000e 0 0) 326px 14px/34px 146px,
+    linear-gradient(#0a001b 0 0) 370px 86px/86px 74px,
+    linear-gradient(#060010 0 0) 466px 46px/46px 114px,
+    linear-gradient(#090018 0 0) 522px 104px/72px 56px,
+    linear-gradient(#070012 0 0) 604px 24px/58px 136px,
+    linear-gradient(#0b0020 0 0) 670px 74px/92px 86px,
+    linear-gradient(#05000e 0 0) 772px 48px/42px 112px,
+    linear-gradient(#080016 0 0) 824px 92px/78px 68px,
+    linear-gradient(#060010 0 0) 912px 34px/52px 126px;
+    background-repeat:no-repeat;filter:drop-shadow(0 -2px 0 rgba(0,238,255,0.44)) drop-shadow(0 0 18px rgba(255,49,214,0.24));opacity:0.88}
+  .synth-city::after{content:'';position:absolute;left:0;right:0;bottom:23vh;height:3px;background:linear-gradient(90deg,transparent,rgba(0,238,255,0.8),rgba(255,49,214,0.9),rgba(0,238,255,0.8),transparent);box-shadow:0 0 18px rgba(0,238,255,0.8),0 0 36px rgba(255,49,214,0.55)}
+  body.style-synthwave::after{height:42vh;background:repeating-linear-gradient(0deg,rgba(255,49,214,0.7) 0 2px,transparent 2px 22px),repeating-linear-gradient(90deg,rgba(0,238,255,0.56) 0 2px,transparent 2px 48px);opacity:0.9}
   .game-wrapper{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:440px;width:100%}
 
   .header{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 16px;background:var(--surface);backdrop-filter:blur(12px);border-radius:16px;border:1px solid rgba(255,255,255,0.08)}
@@ -172,6 +192,7 @@
 <body>
 
 <div class="toast-container" id="toastContainer"></div>
+<div class="synth-city" aria-hidden="true"></div>
 
 <!-- MAIN MENU -->
 <div class="screen active" id="menuScreen">
@@ -191,7 +212,7 @@
       </button>
       <button class="style-option" data-style="synthwave">
         <div class="style-option-name">合成器浪潮</div>
-        <div class="style-option-desc">横线落日和透视地平线</div>
+        <div class="style-option-desc">横线落日、天际线和透视地平线</div>
       </button>
     </div>
     <button class="menu-btn" id="btnAchievements">🏆 成就</button>

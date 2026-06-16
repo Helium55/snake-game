@@ -2,6 +2,16 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.2] - 2026-06-16
+
+### Added
+
+- Added a synthwave city skyline layer and brighter horizon glow behind the main menu.
+
+### Changed
+
+- Strengthened the synthwave perspective grid and updated the style option description to mention the skyline.
+
 ## [0.2.1] - 2026-06-16
 
 ### Fixed
