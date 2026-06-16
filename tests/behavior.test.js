@@ -600,4 +600,54 @@ assert.equal(bodyPointCacheInvalidation.third, 6, 'compression should preserve c
 assert.equal(bodyPointCacheInvalidation.cachedBodyPoints, 6, 'cached body points should store the latest total');
 assert.equal(bodyPointCacheInvalidation.bodyPointsDirty, false, 'totalBodyPoints should leave the cache clean after recomputing');
 
+const autoFrontalFeed = runScenario(`
+Math.random = () => 0.99;
+snake = [{x:5,y:5,lvl:1},{x:4,y:5,lvl:1},{x:3,y:5,lvl:1}];
+markBodyPointsDirty();
+direction = 'right';
+nextDirection = 'right';
+autoMode = true;
+autoFrontalFeedLevel = 3;
+autoFoodSpawn = 1;
+autoFoodBonus = 0;
+critChance = 0;
+splitChance = 0;
+goldenTouch = 0;
+score = 0;
+foodEaten = 0;
+upgradeProgress = 0;
+food = {x:6,y:5,lvl:1};
+foods = [
+  food,
+  {x:7,y:4,lvl:1},
+  {x:8,y:5,lvl:2},
+  {x:9,y:6,lvl:1},
+  {x:7,y:8,lvl:1}
+];
+specialFood = {x:7,y:5,spawnTime:Date.now()};
+paused = false;
+gameOver = false;
+gameTick();
+clearTimeout(tickTimer);
+__testResult = {
+  score,
+  foodEaten,
+  upgradeProgress,
+  bodyPoints: totalBodyPoints(),
+  length: snake.length,
+  specialFood,
+  outsideFoodStillPresent: foods.some(f => f.x === 7 && f.y === 8),
+  gameOver
+};
+`);
+
+assert.equal(autoFrontalFeed.gameOver, false);
+assert.equal(autoFrontalFeed.score, 7, 'direct food plus three forward-area foods should score by their levels');
+assert.equal(autoFrontalFeed.foodEaten, 7, 'forward-area foods should count as real food progress');
+assert.equal(autoFrontalFeed.upgradeProgress, 7, 'forward-area foods should advance upgrade progress');
+assert.equal(autoFrontalFeed.bodyPoints, 10, 'body points should grow by every consumed normal food');
+assert.equal(autoFrontalFeed.length, 10, 'body length should include direct growth plus extra consumed food growth');
+assert.deepEqual(autoFrontalFeed.specialFood && {x:autoFrontalFeed.specialFood.x,y:autoFrontalFeed.specialFood.y}, {x:7,y:5}, 'special food should not be consumed by frontal feeding');
+assert.equal(autoFrontalFeed.outsideFoodStillPresent, true, 'foods outside the forward 3 by 3 area should remain');
+
 console.log('behavior checks passed');

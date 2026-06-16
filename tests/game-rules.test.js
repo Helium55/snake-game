@@ -221,6 +221,7 @@ for (const marker of [
 for (const id of [
   'auto_speed',
   'auto_collect',
+  'auto_frontal_feed',
   'auto_smart',
   'auto_food_bonus',
   'auto_food_spawn',
@@ -233,5 +234,22 @@ for (const id of [
 ]) {
   assert(source.includes(`id:'${id}'`), `auto shop item must have stable id: ${id}`);
 }
+
+for (const marker of [
+  "id:'auto_frontal_feed'",
+  'autoFrontalFeedLevel',
+  'function forwardBiteCells',
+  'function autoFrontalFeedExtraLimit',
+  'function settleRegularFood',
+  'function collectAutoFrontalFoods',
+]) {
+  assert(source.includes(marker), `auto frontal feeding marker missing: ${marker}`);
+}
+
+assert(
+  /autoFrontalFeedLevel=0/.test(source) &&
+  /autoMode&&autoFrontalFeedLevel>0/.test(source),
+  'auto frontal feeding should be per-run and active only in auto mode'
+);
 
 console.log('game rule source checks passed');
