@@ -51,6 +51,37 @@ assert(
   'main menu should expose default, synthwave, and acid visual style choices'
 );
 
+for (const marker of [
+  '--surface-strong',
+  '--line-strong',
+  '--success',
+  '--warning',
+  '--special',
+  'precision-control-shell',
+  'style-swatch',
+]) {
+  assert(source.includes(marker), `precision control UI marker missing: ${marker}`);
+}
+
+for (const marker of [
+  'function pushCanvasEffect',
+  'function drawFoodChip',
+  'function drawMergedFoodCore',
+  'function drawSpecialFoodCore',
+  'function drawSnakeSegment',
+  'function drawCompressedSegment',
+  'function pulseScore',
+]) {
+  assert(source.includes(marker), `distinct visual helper missing: ${marker}`);
+}
+
+assert(
+  source.includes('score-value score-pop-ready') &&
+  source.includes('canvas-effect-ring') &&
+  source.includes('upgrade-card selected'),
+  'score, eating, and upgrade selection feedback should have stable CSS markers'
+);
+
 assert(
   source.includes('.style-acid') &&
   source.includes('@keyframes acid-drift') &&
