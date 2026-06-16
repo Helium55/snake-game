@@ -2,6 +2,13 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.5] - 2026-06-16
+
+### Changed
+
+- Changed the synthwave sunset animation to pulse the sun glow while keeping the scanline cuts fixed.
+- Raised the synthwave perspective grid back into the visible bottom area while preserving its drift animation.
+
 ## [0.2.4] - 2026-06-16
 
 ### Changed

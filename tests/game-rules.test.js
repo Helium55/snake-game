@@ -36,9 +36,9 @@ assert(
 assert(
   source.includes('.style-synthwave') &&
   source.includes('mask-image:repeating-linear-gradient') &&
-  source.includes('@keyframes synth-sun-scan') &&
+  source.includes('@keyframes synth-sun-glow') &&
   source.includes('@keyframes synth-grid-drift'),
-  'synthwave style should include an animated scanline sun and moving horizon-grid styling'
+  'synthwave style should include a glowing scanline sun and moving horizon-grid styling'
 );
 
 assert(
@@ -56,15 +56,15 @@ assert(
 
 assert(
   /body\.style-synthwave::before\{[^}]*mask-image:repeating-linear-gradient/.test(source) &&
-  /body\.style-synthwave::before\{[^}]*animation:synth-sun-scan [^;}]* infinite alternate/.test(source) &&
-  /@keyframes synth-sun-scan\{from\{[^}]*mask-position:0 0/.test(source) &&
-  /to\{[^}]*mask-position:0 12px/.test(source),
-  'synthwave sun scanline animation should loop smoothly with a short alternate motion'
+  /body\.style-synthwave::before\{[^}]*animation:synth-sun-glow/.test(source) &&
+  !source.includes('mask-position') &&
+  !source.includes('infinite alternate'),
+  'synthwave sun animation should pulse the sunset glow without moving scanline cuts'
 );
 
 assert(
-  /body\.style-synthwave::after\{[^}]*bottom:-28vh/.test(source) &&
-  /body\.style-synthwave::after\{[^}]*height:66vh/.test(source) &&
+  /body\.style-synthwave::after\{[^}]*bottom:-12vh/.test(source) &&
+  /body\.style-synthwave::after\{[^}]*height:54vh/.test(source) &&
   /body\.style-synthwave::after\{[^}]*animation:synth-grid-drift/.test(source),
   'synthwave horizon grid should sit at the bottom of the screen and keep moving'
 );
