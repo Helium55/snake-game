@@ -26,6 +26,21 @@ assert(
 );
 
 assert(
+  source.includes('id="btnStyle"') &&
+  source.includes('id="stylePanel"') &&
+  source.includes('data-style="default"') &&
+  source.includes('data-style="synthwave"'),
+  'main menu should expose default and synthwave visual style choices'
+);
+
+assert(
+  source.includes('.style-synthwave') &&
+  source.includes('@keyframes synth-sun-scan') &&
+  source.includes('@keyframes synth-grid-drift'),
+  'synthwave style should include scanline sun and moving horizon-grid styling'
+);
+
+assert(
   /SHOP_UPGRADES\.filter\(c=>!\(c\.id==='magnet'&&magnetLevel\(\)>=3\)\)/.test(source),
   'max-level magnet should be removed from the shop draw pool'
 );

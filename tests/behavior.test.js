@@ -12,6 +12,7 @@ if (!match) {
 }
 
 function element(id) {
+  const classes = new Set();
   return {
     id,
     style: {},
@@ -24,9 +25,16 @@ function element(id) {
     offsetWidth: 500,
     offsetHeight: 500,
     classList: {
-      add() {},
-      remove() {},
-      contains() { return false; },
+      add(...names) { for (const name of names) classes.add(name); },
+      remove(...names) { for (const name of names) classes.delete(name); },
+      contains(name) { return classes.has(name); },
+      toggle(name, force) {
+        if (force === undefined) {
+          if (classes.has(name)) classes.delete(name);
+          else classes.add(name);
+        } else if (force) classes.add(name);
+        else classes.delete(name);
+      },
     },
     appendChild() {},
     remove() {},
@@ -57,6 +65,8 @@ function element(id) {
 function makeContext() {
   const elements = new Map();
   const timeouts = [];
+  const storage = new Map();
+  const body = element('body');
   const context = {
     console,
     Math,
@@ -73,10 +83,11 @@ function makeContext() {
       observe() {}
     },
     localStorage: {
-      getItem() { return null; },
-      setItem() {},
+      getItem(k) { return storage.has(k) ? storage.get(k) : null; },
+      setItem(k, v) { storage.set(k, String(v)); },
     },
     document: {
+      body,
       getElementById(id) {
         if (!elements.has(id)) elements.set(id, element(id));
         return elements.get(id);
@@ -268,6 +279,35 @@ __testResult = { afterFirst, afterSecond: autoSpeedDivider };
 
 assert.equal(autoSpeedUpgrade.afterFirst, 3.2, 'auto speed +25% should reduce the tick divider by 1/1.25');
 assert.equal(autoSpeedUpgrade.afterSecond, 2.56, 'auto speed upgrades should stack multiplicatively');
+
+const visualStyleSwitch = runScenario(`
+setVisualStyle('synthwave');
+const synthwave = {
+  currentVisualStyle,
+  hasBodyClass: document.body.classList.contains('style-synthwave'),
+  stored: localStorage.getItem('snake_visual_style'),
+  canvasBackground: $('gameCanvas').style.background
+};
+setVisualStyle('default');
+__testResult = {
+  synthwave,
+  defaultStyle: currentVisualStyle,
+  hasDefaultBodyClass: document.body.classList.contains('style-default'),
+  hasSynthwaveBodyClass: document.body.classList.contains('style-synthwave'),
+  stored: localStorage.getItem('snake_visual_style'),
+  canvasBackground: $('gameCanvas').style.background
+};
+`);
+
+assert.equal(visualStyleSwitch.synthwave.currentVisualStyle, 'synthwave', 'style switch should apply the synthwave visual style');
+assert.equal(visualStyleSwitch.synthwave.hasBodyClass, true, 'synthwave style should mark the page body');
+assert.equal(visualStyleSwitch.synthwave.stored, 'synthwave', 'style switch should save the synthwave preference');
+assert.equal(visualStyleSwitch.synthwave.canvasBackground, '#070012', 'synthwave style should use the synthwave canvas base color');
+assert.equal(visualStyleSwitch.defaultStyle, 'default', 'style switch should return to default style');
+assert.equal(visualStyleSwitch.hasDefaultBodyClass, true, 'default style should mark the page body');
+assert.equal(visualStyleSwitch.hasSynthwaveBodyClass, false, 'switching back should remove synthwave body class');
+assert.equal(visualStyleSwitch.stored, 'default', 'style switch should save the default preference');
+assert.equal(visualStyleSwitch.canvasBackground, '#080812', 'default style should restore the default canvas base color');
 
 const autoShopResetsForNewGame = runScenario(`
 autoShopPurchases = { auto_speed: 2, auto_food_bonus: 1, env_galaxy: 1 };

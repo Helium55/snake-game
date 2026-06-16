@@ -2,6 +2,13 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.2.0] - 2026-06-16
+
+### Added
+
+- Added a main-menu visual style switcher.
+- Added a synthwave visual style option with scanline sunset, moving horizon grid, neon UI colors, and matching canvas base color.
+
 ## [0.1.0] - 2026-06-14
 
 Baseline version for GitHub Pages rollback points.
@@ -29,4 +36,3 @@ Baseline version for GitHub Pages rollback points.
 - Fixed automation speed upgrades not taking effect.
 - Fixed timed invincibility expiring and turning off cheat invincibility.
 - Fixed speed-scaled upgrade progress blocking upgrades.
-

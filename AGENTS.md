@@ -110,6 +110,7 @@ For a stronger rollback to a specific tag, create a new revert commit that resto
 - Automation begins at level 10 via the automation transition choice.
 - Automation shop purchases are per-run only. New games reset `autoShopPurchases` and all automation effects.
 - The speed slider persists player preference and scales both tick speed and points.
+- The main menu includes a visual style switcher. `default` keeps the original neon grid style; `synthwave` adds the scanline sunset / moving horizon grid style and persists via `snake_visual_style`.
 - Mobile upgrade overlays must remain vertically scrollable so confirmation stays reachable.
 - Mobile controls include A and B buttons so the Konami invincibility toggle can be entered on touch devices.
 - Cheat invincibility and timed invincibility are separate; expiring timed invincibility must not turn off cheat invincibility.

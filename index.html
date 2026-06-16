@@ -7,7 +7,19 @@
 <style>
   :root{--bg:#0a0a0f;--surface:rgba(20,20,40,0.88);--text:#e0e0f0;--accent:#00ff88;--gold:#ffd740;--danger:#ff4060;--purple:#bd00ff}
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--bg);background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:20px 20px;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Segoe UI','PingFang SC',system-ui,sans-serif;color:var(--text);overflow-y:auto;padding:10px;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+  body{position:relative;isolation:isolate;background:var(--bg);background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:20px 20px;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:'Segoe UI','PingFang SC',system-ui,sans-serif;color:var(--text);overflow-y:auto;padding:10px;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+  body.style-synthwave{--bg:#03000a;--surface:rgba(10,0,32,0.78);--text:#fff1ff;--accent:#00eeff;--gold:#fff275;--danger:#ff4b7d;--purple:#ff31d6;background:#03000a;background-image:radial-gradient(circle at 50% 9%,rgba(255,54,194,0.18),transparent 24%),linear-gradient(180deg,#100026 0%,#210041 42%,#070014 100%)}
+  body.style-synthwave::before{content:'';position:fixed;left:50%;top:5vh;width:min(56vw,270px);aspect-ratio:1;border-radius:50%;transform:translateX(-50%);z-index:-2;background:linear-gradient(180deg,#fff275 0%,#ff8a3d 38%,#ff2fc7 72%,#7b2cff 100%);box-shadow:0 0 36px rgba(255,242,117,0.55),0 0 90px rgba(255,47,199,0.38);-webkit-mask-image:repeating-linear-gradient(180deg,#000 0 15px,transparent 15px 24px);mask-image:repeating-linear-gradient(180deg,#000 0 15px,transparent 15px 24px);animation:synth-sun-scan 3.4s linear infinite}
+  body.style-synthwave::after{content:'';position:fixed;left:-20%;right:-20%;bottom:-8vh;height:34vh;z-index:-1;background:repeating-linear-gradient(0deg,rgba(255,49,214,0.62) 0 2px,transparent 2px 24px),repeating-linear-gradient(90deg,rgba(0,238,255,0.48) 0 2px,transparent 2px 56px);transform:perspective(260px) rotateX(62deg);transform-origin:bottom;animation:synth-grid-drift 2.4s linear infinite}
+  @keyframes synth-sun-scan{from{mask-position:0 0;-webkit-mask-position:0 0}to{mask-position:0 24px;-webkit-mask-position:0 24px}}
+  @keyframes synth-grid-drift{from{background-position-y:0,0}to{background-position-y:24px,0}}
+  body.style-synthwave .screen,body.style-synthwave .toast-container,body.style-synthwave .lb-modal{position:relative;z-index:1}
+  body.style-synthwave .header,body.style-synthwave .speed-control,body.style-synthwave .name-input,body.style-synthwave .menu-btn,body.style-synthwave .dpad-btn,body.style-synthwave .pause-btn-mobile{border-color:rgba(255,49,214,0.24);box-shadow:0 0 24px rgba(255,49,214,0.12),inset 0 0 24px rgba(0,238,255,0.04)}
+  body.style-synthwave .menu-title{background:linear-gradient(135deg,#fff275,#ff31d6 45%,#00eeff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 24px rgba(255,49,214,0.5)}
+  body.style-synthwave .menu-subtitle{color:rgba(0,238,255,0.72);text-shadow:0 0 14px rgba(0,238,255,0.55)}
+  body.style-synthwave .canvas-container{border-color:rgba(0,238,255,0.5);box-shadow:0 0 28px rgba(0,238,255,0.24),0 0 70px rgba(255,49,214,0.18),0 30px 80px rgba(0,0,0,0.58)}
+  body.style-synthwave .btn-restart,body.style-synthwave .menu-btn.primary{background:linear-gradient(90deg,rgba(255,49,214,0.24),rgba(0,238,255,0.2));border-color:rgba(0,238,255,0.44);color:#00eeff}
+  body.style-synthwave .btn-menu{background:#ff31d6;color:#090014}
   .game-wrapper{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:440px;width:100%}
 
   .header{display:flex;justify-content:space-between;align-items:center;width:100%;padding:10px 16px;background:var(--surface);backdrop-filter:blur(12px);border-radius:16px;border:1px solid rgba(255,255,255,0.08)}
@@ -135,6 +147,12 @@
   .menu-btn.primary:hover{background:rgba(0,255,136,0.2);box-shadow:0 0 24px rgba(0,255,136,0.15)}
   .menu-stats{display:flex;gap:20px;margin:16px 0;font-size:13px;color:rgba(255,255,255,0.4)}
   .menu-stats span{color:var(--gold)}
+  .style-panel{display:none;width:100%;max-width:340px;margin:8px 0 6px;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:16px;background:var(--surface);backdrop-filter:blur(10px);gap:8px}
+  .style-panel.active{display:grid;grid-template-columns:1fr 1fr}
+  .style-option{padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:var(--text);cursor:pointer;text-align:left;transition:all 0.2s}
+  .style-option.active{border-color:var(--accent);box-shadow:0 0 18px rgba(0,238,255,0.18);background:rgba(0,238,255,0.08)}
+  .style-option-name{font-size:13px;font-weight:800;letter-spacing:1px}
+  .style-option-desc{font-size:10px;color:rgba(255,255,255,0.45);margin-top:3px;line-height:1.35}
 
   /* Mobile */
   .mobile-controls{display:none;width:100%;max-width:280px}
@@ -165,6 +183,17 @@
       <span>🎖 <b id="menuAchCount">0/11</b></span>
     </div>
     <button class="menu-btn primary" id="btnPlay">▶ 开始游戏</button>
+    <button class="menu-btn" id="btnStyle">🎨 风格</button>
+    <div class="style-panel" id="stylePanel">
+      <button class="style-option" data-style="default">
+        <div class="style-option-name">默认霓虹</div>
+        <div class="style-option-desc">深色网格和绿色蛇光效</div>
+      </button>
+      <button class="style-option" data-style="synthwave">
+        <div class="style-option-name">合成器浪潮</div>
+        <div class="style-option-desc">横线落日和透视地平线</div>
+      </button>
+    </div>
     <button class="menu-btn" id="btnAchievements">🏆 成就</button>
     <button class="menu-btn" id="btnLBFromMenu">📊 排行榜</button>
     <div class="name-row" style="margin-top:8px">
@@ -438,14 +467,33 @@ const AUTO_SHOP=[
 
 let autoShopPurchases={};
 function resetAutoShop(){autoShopPurchases={}}
+let currentVisualStyle='default';
 
 function applyBg(bg){
   const b=$('gameCanvas');if(!b)return;
-  b.style.background=bg==='night'?'#0a0a2e':bg==='matrix'?'#0a0f0a':bg==='galaxy'?'#0a0a1a':bg==='dawn'?'#1a140a':'#080812';
+  b.style.background=bg==='night'?'#0a0a2e':bg==='matrix'?'#0a0f0a':bg==='galaxy'?'#0a0a1a':bg==='dawn'?'#1a140a':canvasBaseBackground();
 }
 
 function loadHighScore(){try{return parseInt(localStorage.getItem('snake_highscore')||'0')}catch(e){return 0}}
 function saveHighScore(v){try{localStorage.setItem('snake_highscore',v)}catch(e){}}
+function loadVisualStyle(){try{return localStorage.getItem('snake_visual_style')||'default'}catch(e){return'default'}}
+function saveVisualStyle(v){try{localStorage.setItem('snake_visual_style',v)}catch(e){}}
+function canvasBaseBackground(){return currentVisualStyle==='synthwave'?'#070012':'#080812'}
+function setVisualStyle(style){
+  currentVisualStyle=style==='synthwave'?'synthwave':'default';
+  if(document.body&&document.body.classList){
+    document.body.classList.remove('style-default','style-synthwave');
+    document.body.classList.add(`style-${currentVisualStyle}`);
+  }
+  if(typeof document.querySelectorAll==='function'){
+    document.querySelectorAll('.style-option').forEach(btn=>btn.classList.toggle('active',btn.dataset.style===currentVisualStyle));
+  }
+  const styleBtn=$('btnStyle');
+  if(styleBtn)styleBtn.textContent=`🎨 风格: ${currentVisualStyle==='synthwave'?'合成器浪潮':'默认霓虹'}`;
+  const canvas=$('gameCanvas');
+  if(canvas)canvas.style.background=canvasBaseBackground();
+  saveVisualStyle(currentVisualStyle);
+}
 function loadPlayerSpeed(){try{return parseFloat(localStorage.getItem('snake_player_speed')||'1')||1}catch(e){return 1}}
 function savePlayerSpeed(v){try{localStorage.setItem('snake_player_speed',String(v))}catch(e){}}
 function setPlayerSpeed(v){
@@ -517,7 +565,7 @@ function initGame(){
   autoFoodSpawn=1;autoSpecialRate=0;window._aiSmart=false;
   resetAutoShop();
   $('autoShopBtn').style.display='none';$('autoShopPanel').style.display='none';
-  $('gameCanvas').style.background='#080812';
+  $('gameCanvas').style.background=canvasBaseBackground();
   specialFood=null;konamiIdx=0;phaseTimer=0;
   foods=[];
   highScore=loadHighScore();
@@ -1250,6 +1298,7 @@ const KEY_MAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'
 document.addEventListener('keydown',e=>{initAudio();const c=e.code;if(handleKonamiInput(c)){e.preventDefault();return}if(c in KEY_MAP){e.preventDefault();if(gameOver||paused||autoMode)return;changeDirection(KEY_MAP[c]);return}if(c==='Space'){e.preventDefault();togglePause();return}});
 try{const s=localStorage.getItem('snake_nickname');if(s)$('playerName').value=s}catch(e){}
 $('playerName').addEventListener('input',()=>{try{localStorage.setItem('snake_nickname',$('playerName').value.trim())}catch(e){}});
+setVisualStyle(loadVisualStyle());
 setPlayerSpeed(loadPlayerSpeed());
 $('speedSlider').addEventListener('input',e=>{
   setPlayerSpeed(e.target.value);
@@ -1259,6 +1308,15 @@ $('speedSlider').addEventListener('input',e=>{
   }
 });
 $('btnPlay').addEventListener('click',()=>{initAudio();showScreen('gameScreen');initGame();draw()});
+$('btnStyle').addEventListener('click',()=>{$('stylePanel').classList.toggle('active')});
+if(typeof document.querySelectorAll==='function'){
+  document.querySelectorAll('.style-option').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      setVisualStyle(btn.dataset.style);
+      $('stylePanel').classList.remove('active');
+    });
+  });
+}
 $('btnAchievements').addEventListener('click',()=>showScreen('achScreen'));
 $('btnLBFromMenu').addEventListener('click',()=>{initAudio();openLeaderboard()});
 $('btnAchBack').addEventListener('click',()=>showScreen('menuScreen'));
