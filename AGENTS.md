@@ -109,6 +109,7 @@ For a stronger rollback to a specific tag, create a new revert commit that resto
 - Clicking an already selected optional shop upgrade cancels that shop selection.
 - Automation begins at level 10 via the automation transition choice.
 - Automation shop purchases are per-run only. New games reset `autoShopPurchases` and all automation effects.
+- `auto_frontal_feed` is a per-run automation shop upgrade in the `auto` category. At max level, auto mode consumes normal foods in the snake head's forward 3 by 3 area when a normal food is eaten; it does not consume special food.
 - The speed slider persists player preference and scales both tick speed and points.
 - The main menu includes a visual style switcher. `default` is the Precision Control Console, while `synthwave` and `acid` are theme variants that share the same component system and persist via `snake_visual_style`.
 - Mobile upgrade overlays must remain vertically scrollable so confirmation stays reachable.

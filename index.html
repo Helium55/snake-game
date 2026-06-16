@@ -791,13 +791,14 @@ let critChance=0,splitChance=0,goldenTouch=0,ghostTail=0;
 let cheatInvincible=false,timedInvincible=false;
 let runStartTime=0,tailGrowTimer=0,maxShieldBonus=0,timeWarpTimer=0,timeWarpUntil=0,safeZoneUntil=0,revengeUntil=0;
 // Automation / idle mode (triggers at level 10)
-let autoMode=false,autoSpeedDivider=4,autoCollectRange=1,autoFoodBonus=0;
+let autoMode=false,autoSpeedDivider=4,autoCollectRange=1,autoFoodBonus=0,autoFrontalFeedLevel=0;
 let autoFoodSpawn=1,autoSpecialRate=0;
 
 const AUTO_SHOP=[
   // Automation
   {id:'auto_speed',cat:'auto',icon:'⚡',name:'加速运算',desc:'自动化速度+25%',baseCost:10,apply:()=>{autoSpeedDivider=Math.max(1,autoSpeedDivider/1.25)}},
   {id:'auto_collect',cat:'auto',icon:'🎯',name:'寻路优化',desc:'自动收集范围+1',baseCost:25,apply:()=>{autoCollectRange++}},
+  {id:'auto_frontal_feed',cat:'auto',icon:'▦',name:'前域摄食',desc:'自动吃到食物时吞噬前方3×3内普通食物',baseCost:35,maxLevel:3,apply:()=>{autoFrontalFeedLevel=Math.min(3,autoFrontalFeedLevel+1)}},
   {id:'auto_smart',cat:'auto',icon:'🧠',name:'深度学习',desc:'AI更智能（优先特殊食物）',baseCost:40,apply:()=>{window._aiSmart=true}},
   // Food
   {id:'auto_food_bonus',cat:'food',icon:'🍎',name:'食物增值',desc:'每个食物多+3身体点数',baseCost:15,apply:()=>{autoFoodBonus+=3}},
@@ -928,6 +929,54 @@ function segmentValue(lvl){
 function foodValue(f){
   return Math.pow(FOOD_MERGE_COUNT,(f?.lvl||1)-1);
 }
+function growBodySegments(count){
+  for(let i=0;i<count;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
+  if(count>0)markSnakeChanged();
+}
+function settleRegularFood(eatenFood,effectCell,implicitGrowth){
+  const value=foodValue(eatenFood);
+  let pts=value*scoreMultiplier();
+  if(Date.now()<revengeUntil)pts*=3;
+  if(Math.random()<critChance)pts*=2;
+  score+=pts;foodEaten+=value;upgradeProgress+=value*playerSpeedMult;
+  pulseScore();pushCanvasEffect('eat',effectCell.x,effectCell.y,`+${Math.round(pts)}`);
+  const extraGrow=value+growExtra-(implicitGrowth?1:0);
+  growBodySegments(Math.max(0,extraGrow));
+  if(autoMode&&autoFoodBonus>0)growBodySegments(autoFoodBonus);
+}
+function forwardBiteCells(head,dir){
+  const cells=[];
+  for(let depth=1;depth<=3;depth++){
+    for(let side=-1;side<=1;side++){
+      let x=head.x,y=head.y;
+      if(dir==='right'){x+=depth;y+=side}
+      else if(dir==='left'){x-=depth;y+=side}
+      else if(dir==='down'){y+=depth;x+=side}
+      else{x+=side;y-=depth}
+      if(x>=0&&x<GRID&&y>=0&&y<GRID)cells.push({x,y,depth,side:Math.abs(side)});
+    }
+  }
+  return cells;
+}
+function autoFrontalFeedExtraLimit(){
+  return autoFrontalFeedLevel>=3?Infinity:autoFrontalFeedLevel===2?3:autoFrontalFeedLevel===1?1:0;
+}
+function collectAutoFrontalFoods(head){
+  if(!(autoMode&&autoFrontalFeedLevel>0)||!foods||!foods.length)return [];
+  const cells=forwardBiteCells(head,direction);
+  const cellRanks=new Map(cells.map(c=>[cellKey(c.x,c.y),c.depth*10+c.side]));
+  const matches=foods
+    .filter(f=>cellRanks.has(cellKey(f.x,f.y)))
+    .sort((a,b)=>cellRanks.get(cellKey(a.x,a.y))-cellRanks.get(cellKey(b.x,b.y)));
+  const limit=autoFrontalFeedExtraLimit();
+  const picked=limit===Infinity?matches:matches.slice(0,limit);
+  if(!picked.length)return [];
+  const pickedSet=new Set(picked);
+  foods=foods.filter(f=>!pickedSet.has(f));
+  syncPrimaryFood();
+  for(const f of picked)settleRegularFood(f,f,false);
+  return picked;
+}
 function bodyLevelsFromPoints(points){
   const levels=[];
   for(let lvl=BODY_LEVEL_CAP;lvl>=1;lvl--){
@@ -962,7 +1011,7 @@ function initGame(){
   growExtra=0;scoreMult=1;specialChanceBonus=0;dodgeChance=0;shopPurchaseCount=0;
   bodyPoints=3;cachedBodyPoints=3;bodyPointsDirty=false;mergeThreshold=4;critChance=0;splitChance=0;goldenTouch=0;ghostTail=0;
   runStartTime=Date.now();tailGrowTimer=runStartTime;maxShieldBonus=0;timeWarpTimer=runStartTime;timeWarpUntil=0;safeZoneUntil=runStartTime+5000;revengeUntil=0;
-  autoMode=false;autoSpeedDivider=4;autoCollectRange=1;autoFoodBonus=0;
+  autoMode=false;autoSpeedDivider=4;autoCollectRange=1;autoFoodBonus=0;autoFrontalFeedLevel=0;
   autoFoodSpawn=1;autoSpecialRate=0;window._aiSmart=false;
   canvasEffects=[];lastScoreValue=0;invalidateAutoPath();
   resetAutoShop();
@@ -1444,22 +1493,16 @@ function gameTick(){
 
   if(willEatRegular){
     const eatenFood=foods[eatenFoodIndex];
-    const value=foodValue(eatenFood);
-    let pts=value*scoreMultiplier();
-    if(Date.now()<revengeUntil)pts*=3;
-    if(Math.random()<critChance)pts*=2;
-    score+=pts;foodEaten+=value;upgradeProgress+=value*playerSpeedMult;
-    pulseScore();pushCanvasEffect('eat',head.x,head.y,`+${Math.round(pts)}`);
-    const extraGrow=value+growExtra;
-    for(let i=0;i<extraGrow-1;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}
-    markSnakeChanged();
-    // Auto food bonus: extra body points
-    if(autoMode&&autoFoodBonus>0){for(let i=0;i<autoFoodBonus;i++){const t=snake[snake.length-1];snake.push({x:t.x,y:t.y,lvl:1})}markSnakeChanged()}
     foods.splice(eatenFoodIndex,1);syncPrimaryFood();
-    sfxEat();spawnFood();
-    if(Math.random()<goldenTouch&&!specialFood)spawnSpecialFood();
-    if(Math.random()<splitChance)spawnFood();
-    if(autoMode)for(let i=0;i<autoFoodSpawn-1;i++)spawnFood();
+    settleRegularFood(eatenFood,head,true);
+    const extraFoods=collectAutoFrontalFoods(head);
+    sfxEat();
+    const consumedCount=1+extraFoods.length;
+    for(let i=0;i<consumedCount*autoFoodSpawn;i++)spawnFood();
+    for(let i=0;i<consumedCount;i++){
+      if(Math.random()<goldenTouch&&!specialFood)spawnSpecialFood();
+      if(Math.random()<splitChance)spawnFood();
+    }
     if(autoMode&&Math.random()<autoSpecialRate&&!specialFood)spawnSpecialFood();
     if(specialFood&&foods.some(f=>f.x===specialFood.x&&f.y===specialFood.y)){specialFood=null;invalidateAutoPath()}
     mergeFoods();
@@ -1949,7 +1992,7 @@ function renderAutoShopLegacy(){
   let html='';
   for(const cat of catOrder){
     html+=`<div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.3);margin:12px 0 6px">${cats[cat]}</div>`;
-    for(const it of AUTO_SHOP.filter(i=>i.cat===cat)){
+    for(const it of AUTO_SHOP.filter(i=>i.cat===cat&&!(i.maxLevel&&((autoShopPurchases[i.id]||0)>=i.maxLevel)))){
       const owned=(autoShopPurchases[it.id]||0);
       const cost=Math.ceil(it.baseCost*(1+owned*0.3));
       const afford=bp>=cost;
@@ -1985,7 +2028,7 @@ function renderAutoShop(){
   let html='';
   for(const cat of catOrder){
     html+=`<div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin:12px 0 6px">${cats[cat]}</div>`;
-    for(const it of AUTO_SHOP.filter(i=>i.cat===cat)){
+    for(const it of AUTO_SHOP.filter(i=>i.cat===cat&&!(i.maxLevel&&((autoShopPurchases[i.id]||0)>=i.maxLevel)))){
       const owned=(autoShopPurchases[it.id]||0);
       const cost=Math.ceil(it.baseCost*(1+owned*0.3));
       const afford=bp>=cost;

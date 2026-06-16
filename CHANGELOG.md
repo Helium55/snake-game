@@ -2,6 +2,16 @@
 
 All notable changes to this project should be recorded here.
 
+## [0.4.1] - 2026-06-16
+
+### Added
+
+- Added an automation shop `auto` upgrade that lets auto mode consume normal foods in the snake head's forward 3 by 3 area.
+
+### Changed
+
+- Shared normal food settlement between direct eating and automated frontal eating so score, body points, upgrade progress, and respawns stay consistent.
+
 ## [0.4.0] - 2026-06-16
 
 ### Changed
